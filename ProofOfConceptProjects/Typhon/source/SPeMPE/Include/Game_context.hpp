@@ -5,10 +5,12 @@
 #include <Hobgoblin/Graphics.hpp>
 #include <Hobgoblin/QAO.hpp>
 
+#include <SPeMPE/Include/Context_components.hpp>
 #include <SPeMPE/Include/Networking_manager.hpp>
 #include <SPeMPE/Include/Synchronized_object_registry.hpp>
 #include <SPeMPE/Include/Window_manager.hpp>
 
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <deque>
@@ -20,34 +22,59 @@
 #include <string>
 #include <thread>
 
+namespace jbatnozic {
 namespace spempe {
 
+//! LEGACY
 constexpr int PLAYER_INDEX_UNKNOWN = -2;
+
+//! LEGACY
 constexpr int PLAYER_INDEX_NONE = -1;
+
+//! LEGACY
 constexpr int PLAYER_INDEX_LOCAL_PLAYER = 0;
 
+//! LEGACY
 constexpr class GameContext_AllowOnHost_Type {} ALLOW_ON_HOST;
 
+//! LEGACY
 class GameContextExtensionData {
 public:
     virtual ~GameContextExtensionData() = 0;
     virtual const std::type_info& getTypeInfo() const = 0;
 };
 
+namespace hg = ::jbatnozic::hobgoblin;
+
+namespace detail {
+constexpr int GCMF_NONE = 0x0;
+constexpr int GCMF_PRIV = 0x1;
+constexpr int GCMF_HDLS = 0x2;
+constexpr int GCMF_NETW = 0x4;
+
+constexpr int GCM_INIT = GCMF_NONE;
+constexpr int GCM_SERV = GCMF_PRIV | GCMF_HDLS | GCMF_NETW;
+constexpr int GCM_CLNT = GCMF_NETW;
+constexpr int GCM_SOLO = GCMF_PRIV;
+constexpr int GCM_GMAS = GCMF_PRIV | GCMF_NETW;
+} // namespace detail
+
 class GameContext {
 public:
-    static constexpr int F_PRIVILEGED = 0x1;
-    static constexpr int F_NETWORKING = 0x2;
-    static constexpr int F_HEADLESS   = 0x4;
+    ///////////////////////////////////////////////////////////////////////////
+    // CONFIGURATION                                                         //
+    ///////////////////////////////////////////////////////////////////////////
 
-    enum class Mode : int {
-        Initial    = 0,
-        Server     = F_PRIVILEGED | F_NETWORKING | F_HEADLESS,
-        Client     = F_NETWORKING,
-        Solo       = F_PRIVILEGED,
-        GameMaster = F_PRIVILEGED | F_NETWORKING,
+    enum class Mode {
+                                       // PRIVILEGED | HEADLESS | NETWORKING
+        Initial    = detail::GCM_INIT, //            |          |           
+        Server     = detail::GCM_SERV, //      +     |     +    |      +    
+        Client     = detail::GCM_CLNT, //            |          |      +    
+        Solo       = detail::GCM_SOLO, //      +     |          |           
+        GameMaster = detail::GCM_GMAS, //      +     |          |      +    
     };
 
+    //! LEGACY
     struct ResourceConfig {
         const hg::gr::SpriteLoader* spriteLoader;
     };
@@ -65,26 +92,16 @@ public:
         hg::PZInteger _maxFramesBetweenDisplays;
     };
 
-    struct PerformanceInfo {
-        PerformanceInfo() = default;
-        PerformanceInfo(const PerformanceInfo&) = default;
-        PerformanceInfo& operator=(const PerformanceInfo&) = default;
-
-        std::chrono::microseconds frameToFrameTime{0};
-        std::chrono::microseconds updateAndDrawTime{0};
-        std::chrono::microseconds finalizeTime{0};
-        std::chrono::microseconds totalTime{0};
-        hg::PZInteger consecutiveUpdateLoops{0};
-    };
-
     // TODO Temp.
+    //! LEGACY
     int syncBufferLength = 2;
 
     GameContext(const ResourceConfig& resourceConfig, const RuntimeConfig& runtimeConfig);
     ~GameContext();
 
-    // Configuration
-    void configure(Mode mode);
+    //! Only transitions between Initial and other modes (and the other way
+    //! round) are possible.
+    void setToMode(Mode mode);
 
     bool isPrivileged() const;
     bool isHeadless() const;
@@ -93,67 +110,182 @@ public:
     const ResourceConfig& getResourceConfig() const;
     const RuntimeConfig& getRuntimeConfig() const;
 
+    //! LEGACY
+    [[deprecated]]
     void setLocalPlayerIndex(int index);
+
+    //! LEGACY
+    [[deprecated]]
     int getLocalPlayerIndex() const;
 
+    //! LEGACY
+    [[deprecated]]
     void setExtensionData(std::unique_ptr<GameContextExtensionData> extData);
+
+    //! LEGACY
+    [[deprecated]]
     GameContextExtensionData* getExtensionData() const;
 
-    // Get Controllers & Managers:
+    ///////////////////////////////////////////////////////////////////////////
+    // GAME OBJECT MANAGEMENT                                                //
+    ///////////////////////////////////////////////////////////////////////////
+
     hg::QAO_Runtime& getQaoRuntime();
+
+    ///////////////////////////////////////////////////////////////////////////
+    // COMPONENT MANAGEMENT                                                  //
+    ///////////////////////////////////////////////////////////////////////////
+
+    //! Throws hg::TracedLogicError in case of tagHash clash.
+    template <class taComponent>
+    void attachComponent(taComponent& aComponent);
+
+    //! Throws hg::TracedLogicError in case of tagHash clash.
+    template <class taComponent>
+    void attachAndOwnComponent(std::unique_ptr<taComponent> aComponent);
+
+    //! No-op if component isn't present.
+    //! If the component was owned by the context, it is destroyed.
+    void detachComponent(ContextComponent& aComponent);
+
+    //! Throws hg::TracedLogicError if the component isn't present.
+    template <class taComponent>
+    taComponent& getComponent() const;
+
+    std::string getComponentTableString(char aSeparator = '\n') const;
+
+    //! LEGACY
+    [[deprecated]]
     WindowManager& getWindowManager();
+
+    //! LEGACY
+    [[deprecated]]
     NetworkingManager& getNetworkingManager();
+
+    //! LEGACY
+    [[deprecated]]
     SynchronizedObjectRegistry& getSyncObjReg();
 
-    // Execution:
-    int run();
+    ///////////////////////////////////////////////////////////////////////////
+    // EXECUTION                                                             //
+    ///////////////////////////////////////////////////////////////////////////
+
+    //! Run for a number of steps. A negative value will be taken as infinity.
+    //! Returns status code of the run (0 = success).
+    int runFor(int aSteps);
+
+    //! Can be called by an instance from 'within' the context (if runFor has
+    //! been started) to stop the execution after the current step.
     void stop();
 
-    const PerformanceInfo& getPerformanceInfo() const;
-    int getCurrentStepOrdinal() const;
+    struct PerformanceInfo {
+        std::chrono::microseconds frameToFrameTime{0};
+        std::chrono::microseconds updateAndDrawTime{0};
+        std::chrono::microseconds finalizeTime{0};
+        std::chrono::microseconds totalTime{0};
+        hg::PZInteger consecutiveUpdateLoops{0};
+    };
 
+    //! Returns the performance measurements of the last executed step.
+    const PerformanceInfo& getPerformanceInfo() const;
+    
+    //! LEGACY
     void addPostStepAction(hg::PZInteger delay, std::function<void(GameContext&)> action);
+
+    //! LEGACY
     void addPostStepAction(hg::PZInteger delay, GameContext_AllowOnHost_Type,
                            std::function<void(GameContext&)> action);
 
-    // Child context stuff:
-    bool hasChildContext();
+    //! Returns the ordinal number of the step currently being executed, or of
+    //! the last step that was executed if execution was stopped or finished.
+    int getCurrentStepOrdinal() const;
+
+    ///////////////////////////////////////////////////////////////////////////
+    // CHILD CONTEXT SUPPORT                                                 //
+    ///////////////////////////////////////////////////////////////////////////
+
+    //! Attach a child context.
+    //! Throws hg::TracedLogicError if a context is already attached.
+    void attachChildContext(std::unique_ptr<GameContext> aChildContext);
+
+    //! Detaches the currently attached child context (return value can be
+    //! nullptr if none).
+    //! Throws hg::TracedLogicError if the attached context is currently running
+    //! (that is, if isChildContextJoinable() returns true).
+    std::unique_ptr<GameContext> detachChildContext();
+
+    //! Returns true if a child context is currently attached.
+    bool hasChildContext() const;
+
+    //! Returns true if the attached child context is currently running or has
+    //! finished execution and is waiting to be joined. Also returns true if
+    //! it hasn't been started yet.
+    //! Throws hg::TracedLogicError if no child context is attached.
+    bool isChildContextJoinable() const;
+
+    //! Returns the currently attached child context (can be nullptr if none).
     GameContext* getChildContext() const;
-    int stopChildContext();
-    void runChildContext(std::unique_ptr<GameContext> childContext);
+
+    //! Starts executing the child context in a background thread.
+    //! The argument aSteps is the same as for runFor().
+    //! Throws hg::TracedLogicError if no child context is attached or it's
+    //! joinable (that is, isChildContextJoinable() returns true).
+    void startChildContext(int aSteps);
+
+    //! If a child context is currently attached and is currently running, this
+    //! method stops it and joins the background thread. Otherwise, it does 
+    //! nothing. The return value is the status of the execution of the last
+    //! stopped child context (0 = success), which will be undefined if no child
+    //! contexts were ever started.
+    int stopAndJoinChildContext();
 
 private:
     // Configuration:
-    ResourceConfig _resourceConfig;
+    Mode _mode = Mode::Initial;
+    ResourceConfig _resourceConfig; //! LEGACY
     RuntimeConfig _runtimeConfig;
 
     // Game object management:
     hg::QAO_Runtime _qaoRuntime;
-    WindowManager _windowManager;
-    NetworkingManager _networkingManager;
-    SynchronizedObjectRegistry _syncObjReg;
+
+    WindowManager _windowManager; //! LEGACY
+    NetworkingManager _networkingManager; //! LEGACY
+    SynchronizedObjectRegistry _syncObjReg; //! LEGACY
+
+    // Context components:
+    detail::ComponentTable _components;
+    std::vector<std::unique_ptr<ContextComponent>> _ownedComponents;
+
+    // Execution:
+    PerformanceInfo _performanceInfo;
+    hg::PZInteger _stepOrdinal = 0;
+    std::atomic<bool> _quit;
 
     // Child context stuff:
     GameContext* _parentContext = nullptr;
-    std::unique_ptr<GameContext> _childContext;
+    std::unique_ptr<GameContext> _childContext = nullptr;
     std::thread _childContextThread;
     int _childContextReturnValue = 0;
 
     // State:
-    std::deque<std::list<std::function<void(GameContext&)>>> _postStepActions;
-    PerformanceInfo _performanceInfo;
-    std::unique_ptr<GameContextExtensionData> _extensionData;
-    int _stepOrdinal = 0;
-    int _localPlayerIndex = PLAYER_INDEX_UNKNOWN;
-    Mode _mode = Mode::Initial;
-    bool _quit = false;
+    std::deque<std::list<std::function<void(GameContext&)>>> _postStepActions; //! LEGACY
+    
+    std::unique_ptr<GameContextExtensionData> _extensionData; //! LEGACY
+    
+    int _localPlayerIndex = PLAYER_INDEX_UNKNOWN; //! LEGACY
 
-    static void _runImpl(hg::not_null<GameContext*> context, hg::not_null<int*> retVal);
+    static void _runImpl(hg::not_null<GameContext*> aContext,
+                         int aMaxSteps,
+                         hg::not_null<int*> aReturnValue);
 
+    [[deprecated]]
     void _insertPostStepAction(std::function<void(GameContext&)> action, hg::PZInteger delay);
+
+    [[deprecated]]
     void _pollPostStepActions();
 };
 
 } // namespace spempe
+} // namespace jbatnozic
 
 #endif // !SPEMPE_GAME_CONTEXT_HPP

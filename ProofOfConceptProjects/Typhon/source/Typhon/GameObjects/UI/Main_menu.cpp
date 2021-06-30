@@ -66,7 +66,7 @@ void MainMenu::_eventUpdate() {
         const std::uint16_t localPort = InputPrompt<std::uint16_t>("local port - 0 for any", 8888);
         const hg::PZInteger clientCount = InputPrompt<hg::PZInteger>("client count", 2);
 
-        serverCtx->configure(GameContext::Mode::Server);
+        serverCtx->setToMode(GameContext::Mode::Server);
         serverCtx->getNetworkingManager().getServer().start(localPort);
         serverCtx->getNetworkingManager().getServer().resize(clientCount);
         serverCtx->getNetworkingManager().getServer().setTimeoutLimit(std::chrono::seconds{5});
@@ -77,7 +77,7 @@ void MainMenu::_eventUpdate() {
         generateTerrain(*serverCtx);
 
         // Connect to the server:
-        ctx().configure(GameContext::Mode::Client);
+        ctx().setToMode(GameContext::Mode::Client);
         std::cout << "Connecting to self (IP = " << sf::IpAddress::LocalHost << ")\n";
         // ctx(MNetworking).getClient().connect(0, sf::IpAddress::LocalHost, serverPort);
         ctx(MNetworking).getClient().connectLocal(server);
@@ -85,19 +85,20 @@ void MainMenu::_eventUpdate() {
 
 
 
-        ctx().runChildContext(std::move(serverCtx));
+        ctx().attachChildContext(std::move(serverCtx));
+        ctx().startChildContext(-1);
     }
     else if (mode == CLIENT) {
         const std::uint16_t localPort  = InputPrompt<std::uint16_t>("local port", 0);
         const std::string   serverIp   = InputPrompt<std::string>("server IP", "127.0.0.1");
         const std::uint16_t serverPort = InputPrompt<std::uint16_t>("server port", 8888);
 
-        ctx().configure(GameContext::Mode::Client);
+        ctx().setToMode(GameContext::Mode::Client);
         ctx(MNetworking).getClient().connect(localPort, serverIp, serverPort);
         ctx(MNetworking).getClient().setTimeoutLimit(std::chrono::seconds{5});
     }
     else if (mode == SOLO) {
-        ctx().configure(GameContext::Mode::Solo);
+        ctx().setToMode(GameContext::Mode::Solo);
         generateTerrain(ctx());
 
         //PhysicsPlayer::VisibleState vs;
@@ -107,7 +108,7 @@ void MainMenu::_eventUpdate() {
         //QAO_PCreate<PhysicsPlayer>(getRuntime(), ctx().getSyncObjReg(), SYNC_ID_NEW, vs);
     }
     else if (mode == GAME_MASTER) {
-        ctx().configure(GameContext::Mode::GameMaster);
+        ctx().setToMode(GameContext::Mode::GameMaster);
         ctx(MNetworking).getServer().start(InputPrompt<std::uint16_t>("local port - 0 for any", 8888));
         ctx(MNetworking).getServer().resize(InputPrompt<hg::PZInteger>("client count", 2));
         ctx(MNetworking).getServer().setTimeoutLimit(std::chrono::seconds{5});

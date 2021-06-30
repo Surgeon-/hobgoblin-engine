@@ -8,6 +8,7 @@
 
 #include <vector>
 
+namespace jbatnozic {
 namespace spempe {
 
 enum class KbKey {
@@ -157,6 +158,7 @@ private:
 };
 
 } // namespace spempe
+} // namespace jbatnozic
 
 #endif // !SPEMPE_KEYBOARD_INPUT_HPP
 

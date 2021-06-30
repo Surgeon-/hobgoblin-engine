@@ -12,6 +12,8 @@ class ControlsManager;
 class EnvironmentManager;
 class GameplayManager;
 
+namespace spempe = jbatnozic::spempe;
+
 struct TyphonGameContextExtensionData : public spempe::GameContextExtensionData {
     hg::cpSpaceUPtr physicsSpace;
     std::unique_ptr<GameplayManager> mainGameController;

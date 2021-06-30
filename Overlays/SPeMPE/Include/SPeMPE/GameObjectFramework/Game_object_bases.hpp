@@ -4,6 +4,7 @@
 #include <Hobgoblin/QAO.hpp>
 #include <Hobgoblin/RigelNet.hpp>
 #include <Hobgoblin/RigelNet_Macros.hpp>
+#include <Hobgoblin/Utility/State_scheduler.hpp> // TODO Temp.
 #include <Hobgoblin/Utility/State_scheduler_simple.hpp>
 #include <SPeMPE/GameContext/Game_context.hpp>
 #include <SPeMPE/GameObjectFramework/Synchronized_object_registry.hpp>

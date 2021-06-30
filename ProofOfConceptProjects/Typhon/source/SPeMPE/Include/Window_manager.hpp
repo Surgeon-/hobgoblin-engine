@@ -9,6 +9,7 @@
 #include <SPeMPE/Include/Game_object_framework.hpp>
 #include <SPeMPE/Include/Keyboard_input.hpp>
 
+namespace jbatnozic {
 namespace spempe {
 
 class WindowManager : public NonstateObject {
@@ -22,18 +23,18 @@ public:
 
     WindowManager(hg::QAO_RuntimeRef runtimeRef);
 
-    void init(sf::VideoMode windowVideoMode, 
-              const sf::String& windowTitle, 
+    void init(sf::VideoMode windowVideoMode,
+              const sf::String& windowTitle,
               sf::Vector2u mainRenderTextureSize,
               sf::Uint32 windowStyle = sf::Style::Default,
               const sf::ContextSettings& windowContextSettings = sf::ContextSettings{},
               const sf::ContextSettings& mainRenderTextureContextSettings = sf::ContextSettings{}
-              );
+    );
 
     void initAsHeadless();
 
     void create(); // TODO Temp.
-    
+
     sf::RenderWindow& getWindow(); // TODO Temp.
     sf::RenderTexture& getMainRenderTexture();
     hg::gr::Canvas& getCanvas();
@@ -81,6 +82,7 @@ private:
 };
 
 } // namespace spempe
+} // namespace jbatnozic
 
 #endif // !SPEMPE_WINDOW_MANAGER
 

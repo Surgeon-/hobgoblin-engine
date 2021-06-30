@@ -4,6 +4,7 @@
 
 #include <cassert>
 
+namespace jbatnozic {
 namespace spempe {
 
 KbInputTracker::KbInputTracker() {
@@ -131,3 +132,4 @@ void KbInputTracker::cullInputString() {
 }
 
 } // namespace spempe
+} // namespace jbatnozic

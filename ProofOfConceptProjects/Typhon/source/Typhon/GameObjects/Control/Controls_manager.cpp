@@ -25,7 +25,7 @@ RN_DEFINE_RPC(SetClientControls, RN_ARGS(PlayerControls&, controls)) {
 
             const auto clientIndex = server.getSenderIndex();
 
-            const auto latency = server.getClientConnector(clientIndex).getRemoteInfo().latency;
+            const auto latency = server.getClientConnector(clientIndex).getRemoteInfo().meanLatency;
             using TIME = std::remove_cv_t<decltype(latency)>;
             const auto dt = std::chrono::duration_cast<TIME>(ctx.getRuntimeConfig().getDeltaTime());
             const auto delaySteps = static_cast<int>(latency / dt) / 2;

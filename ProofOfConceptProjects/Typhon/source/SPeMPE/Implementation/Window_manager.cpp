@@ -5,12 +5,13 @@
 #include <algorithm>
 #include <iostream>
 
+namespace jbatnozic {
 namespace spempe {
 
 WindowManager::WindowManager(hg::QAO_RuntimeRef runtimeRef)
-    : NonstateObject{runtimeRef, SPEMPE_TYPEID_SELF, 0, "spempe::WindowManager"}
-    , _windowAdapter{_window}
-    , _mainRenderTextureAdapter{_mainRenderTexture}
+    : NonstateObject{ runtimeRef, SPEMPE_TYPEID_SELF, 0, "spempe::WindowManager" }
+    , _windowAdapter{ _window }
+    , _mainRenderTextureAdapter{ _mainRenderTexture }
 {
 }
 
@@ -25,9 +26,9 @@ void WindowManager::create() {
     _mainRenderTexture.create(1920, 1080);
     _mainRenderTexture.setSmooth(true);
     _mainRenderTextureAdapter.setViewCount(1);
-    _mainRenderTextureAdapter.getView(0).setSize({1920, 1080});
-    _mainRenderTextureAdapter.getView(0).setCenter({1920 / 2, 1080 / 2});
-    _mainRenderTextureAdapter.getView(0).setViewport({0, 0, 1, 1});
+    _mainRenderTextureAdapter.getView(0).setSize({ 1920, 1080 });
+    _mainRenderTextureAdapter.getView(0).setCenter({ 1920 / 2, 1080 / 2 });
+    _mainRenderTextureAdapter.getView(0).setViewport({ 0, 0, 1, 1 });
 }
 
 void WindowManager::init(sf::VideoMode windowVideoMode,
@@ -46,7 +47,7 @@ void WindowManager::init(sf::VideoMode windowVideoMode,
     _mainRenderTextureAdapter.setViewCount(1);
     _mainRenderTextureAdapter.getView(0).setSize(static_cast<float>(mainRenderTextureSize.x),
                                                  static_cast<float>(mainRenderTextureSize.y));
-    _mainRenderTextureAdapter.getView(0).setViewport({0.f, 0.f, 1.f, 1.f});
+    _mainRenderTextureAdapter.getView(0).setViewport({ 0.f, 0.f, 1.f, 1.f });
 }
 
 void WindowManager::initAsHeadless() {
@@ -76,37 +77,37 @@ KbInputTracker& WindowManager::getKeyboardInput() {
 
 void WindowManager::drawMainRenderTexture(DrawPosition drawPosition) {
     _mainRenderTexture.display();
-    sf::Sprite mrtSprite{_mainRenderTexture.getTexture()};
+    sf::Sprite mrtSprite{ _mainRenderTexture.getTexture() };
     const sf::Vector2u mrtSize = _mainRenderTexture.getSize();
     const sf::Vector2u winSize = _window.getSize();
 
     switch (drawPosition) {
     case DrawPosition::Stretch:
-        mrtSprite.setScale({static_cast<float>(winSize.x) / mrtSize.x,
-                            static_cast<float>(winSize.y) / mrtSize.y});
+        mrtSprite.setScale({ static_cast<float>(winSize.x) / mrtSize.x,
+                            static_cast<float>(winSize.y) / mrtSize.y });
         break;
 
     case DrawPosition::Fill:
     case DrawPosition::Fit:
-        {
-            float scale;
-            if (drawPosition == DrawPosition::Fill) {
-                scale = std::max(static_cast<float>(winSize.x) / mrtSize.x,
-                                 static_cast<float>(winSize.y) / mrtSize.y);
-            }
-            else {
-                scale = std::min(static_cast<float>(winSize.x) / mrtSize.x,
-                                 static_cast<float>(winSize.y) / mrtSize.y);
-            }
-            mrtSprite.setScale({scale, scale});
+    {
+        float scale;
+        if (drawPosition == DrawPosition::Fill) {
+            scale = std::max(static_cast<float>(winSize.x) / mrtSize.x,
+                             static_cast<float>(winSize.y) / mrtSize.y);
         }
-        // FALLTHROUGH
+        else {
+            scale = std::min(static_cast<float>(winSize.x) / mrtSize.x,
+                             static_cast<float>(winSize.y) / mrtSize.y);
+        }
+        mrtSprite.setScale({ scale, scale });
+    }
+    // FALLTHROUGH
 
     case DrawPosition::Centre:
-        mrtSprite.setOrigin({static_cast<float>(mrtSize.x) / 2.f,
-                             static_cast<float>(mrtSize.y) / 2.f});
-        mrtSprite.setPosition({static_cast<float>(winSize.x) / 2.f,
-                               static_cast<float>(winSize.y) / 2.f});
+        mrtSprite.setOrigin({ static_cast<float>(mrtSize.x) / 2.f,
+                             static_cast<float>(mrtSize.y) / 2.f });
+        mrtSprite.setPosition({ static_cast<float>(winSize.x) / 2.f,
+                               static_cast<float>(winSize.y) / 2.f });
         break;
 
     default:
@@ -169,11 +170,11 @@ void WindowManager::_finalizeFrameByDisplayingWindow() {
             break;
 
         case sf::Event::Resized:
-            {
-                sf::FloatRect visibleArea(0, 0, ev.size.width, ev.size.height);
-                _window.setView(sf::View(visibleArea));
-            }
-            break;
+        {
+            sf::FloatRect visibleArea(0, 0, ev.size.width, ev.size.height);
+            _window.setView(sf::View(visibleArea));
+        }
+        break;
 
         case sf::Event::TextEntered:
             _kbi.onTextEvent(ev);
@@ -202,3 +203,4 @@ void WindowManager::_finalizeFrameBySleeping() {
 }
 
 } // namespace spempe
+} // namespace jbatnozic

@@ -5,42 +5,13 @@
 #include <algorithm>
 #include <cassert>
 
+namespace jbatnozic {
 namespace spempe {
 
-namespace {
-
-// #define CATCH_EXCEPTIONS_TOP_LEVEL
-
-int DoSingleQaoIteration(hg::QAO_Runtime& runtime, std::int32_t eventFlags) {
-    runtime.startStep();
-    bool done = false;
-    do {
-#ifdef CATCH_EXCEPTIONS_TOP_LEVEL
-        try {
-            runtime.advanceStep(done, eventFlags);
-        }
-        catch (std::exception& ex) {
-            std::cout << "Exception caught: " << ex.what() << '\n';
-            return 1;
-        }
-        catch (...) {
-            std::cout << "Unknown exception caught!\n";
-            return 2;
-        }
-#else
-        runtime.advanceStep(done, eventFlags);
-#endif
-    } while (!done);
-
-    return 0;
-}
-
-} // namespace
-
 GameContext::RuntimeConfig::RuntimeConfig(hg::PZInteger targetFramerate, hg::PZInteger maxFramesBetweenDisplays)
-    : _targetFramerate{targetFramerate}
-    , _deltaTime{1.0 / static_cast<double>(targetFramerate)}
-    , _maxFramesBetweenDisplays{maxFramesBetweenDisplays}
+    : _targetFramerate{ targetFramerate }
+    , _deltaTime{ 1.0 / static_cast<double>(targetFramerate) }
+    , _maxFramesBetweenDisplays{ maxFramesBetweenDisplays }
 {
     assert(targetFramerate > 0);
     assert(maxFramesBetweenDisplays > 0);
@@ -67,21 +38,28 @@ GameContext::GameContext(const ResourceConfig& resourceConfig, const RuntimeConf
     : _resourceConfig{resourceConfig}
     , _runtimeConfig{runtimeConfig}
     , _qaoRuntime{this}
-    , _windowManager{_qaoRuntime.nonOwning()}
-    , _networkingManager{_qaoRuntime.nonOwning()}
-    , _syncObjReg{_networkingManager.getNode()}
-    , _extensionData{nullptr}
+    , _windowManager{_qaoRuntime.nonOwning()} //! LEGACY
+    , _networkingManager{_qaoRuntime.nonOwning()} //! LEGACY
+    , _syncObjReg{_networkingManager.getNode()} //! LEGACY
+    , _components{100} // TODO
+    , _extensionData{ nullptr }
 {
     _networkingManager.getNode().setUserData(this);
 }
 
+//! LEGACY (old impl)
 GameContext::~GameContext() {
     _qaoRuntime.eraseAllNonOwnedObjects();
     _extensionData.reset();
     _postStepActions.clear();
 }
 
-void GameContext::configure(Mode mode) {
+///////////////////////////////////////////////////////////////////////////
+// CONFIGURATION                                                         //
+///////////////////////////////////////////////////////////////////////////
+
+//! LEGACY (old impl)
+void GameContext::setToMode(Mode mode) {
     _mode = mode;
 
     // Configure local player index:
@@ -119,15 +97,15 @@ void GameContext::configure(Mode mode) {
 }
 
 bool GameContext::isPrivileged() const {
-    return ((static_cast<int>(_mode) & F_PRIVILEGED) != 0);
+    return ((static_cast<int>(_mode) & detail::GCMF_PRIV) != 0);
 }
 
 bool GameContext::isHeadless() const {
-    return ((static_cast<int>(_mode) & F_HEADLESS) != 0);
+    return ((static_cast<int>(_mode) & detail::GCMF_HDLS) != 0);
 }
 
 bool GameContext::hasNetworking() const {
-    return ((static_cast<int>(_mode) & F_NETWORKING) != 0);
+    return ((static_cast<int>(_mode) & detail::GCMF_NETW) != 0);
 }
 
 const GameContext::ResourceConfig& GameContext::getResourceConfig() const {
@@ -138,14 +116,10 @@ const GameContext::RuntimeConfig& GameContext::getRuntimeConfig() const {
     return _runtimeConfig;
 }
 
-const GameContext::PerformanceInfo& GameContext::getPerformanceInfo() const {
-    return _performanceInfo;
-}
-
 void GameContext::addPostStepAction(hg::PZInteger delay, std::function<void(GameContext&)> action) {
     if (isPrivileged()) {
         throw hg::TracedLogicError{"Cannot add a post step action on host context without the "
-                                         "ALLOW_ON_HOST switch."};
+                                   "ALLOW_ON_HOST switch."};
     }
 
     _insertPostStepAction(std::move(action), delay);
@@ -154,10 +128,6 @@ void GameContext::addPostStepAction(hg::PZInteger delay, std::function<void(Game
 void GameContext::addPostStepAction(hg::PZInteger delay, GameContext_AllowOnHost_Type,
                                     std::function<void(GameContext&)> action) {
     _insertPostStepAction(std::move(action), delay);
-}
-
-int GameContext::getCurrentStepOrdinal() const {
-    return _stepOrdinal;
 }
 
 void GameContext::setLocalPlayerIndex(int index) {
@@ -176,8 +146,30 @@ GameContextExtensionData* GameContext::getExtensionData() const {
     return _extensionData.get();
 }
 
+///////////////////////////////////////////////////////////////////////////
+// GAME OBJECT MANAGEMENT                                                //
+///////////////////////////////////////////////////////////////////////////
+
 hg::QAO_Runtime& GameContext::getQaoRuntime() {
     return _qaoRuntime;
+}
+
+///////////////////////////////////////////////////////////////////////////
+// COMPONENT MANAGEMENT                                                  //
+///////////////////////////////////////////////////////////////////////////
+
+void GameContext::detachComponent(ContextComponent& aComponent) {
+    _components.detachComponent(aComponent);
+
+    _ownedComponents.erase(
+        std::remove_if(_ownedComponents.begin(), _ownedComponents.end(),
+        [&aComponent](std::unique_ptr<ContextComponent>& aCurr) {
+            return aCurr.get() == &aComponent;
+        }), _ownedComponents.end());
+}
+
+std::string GameContext::getComponentTableString(char aSeparator) const {
+    return _components.toString(aSeparator);
 }
 
 WindowManager& GameContext::getWindowManager() {
@@ -192,48 +184,132 @@ SynchronizedObjectRegistry& GameContext::getSyncObjReg() {
     return _syncObjReg;
 }
 
-int GameContext::run() {
+///////////////////////////////////////////////////////////////////////////
+// EXECUTION                                                             //
+///////////////////////////////////////////////////////////////////////////
+
+int GameContext::runFor(int aSteps) {
     int rv;
-    _runImpl(this, &rv);
+    _quit.store(false);
+    _runImpl(this, aSteps, &rv);
     return rv;
 }
 
 void GameContext::stop() {
-    if (hasChildContext()) {
-        auto childRv = stopChildContext();
+    if (hasChildContext() && isChildContextJoinable()) {
+        const auto childRv = stopAndJoinChildContext();
+        // TODO Remove temporary cout
         std::cout << "Child context stopped with exit code " << childRv << '\n';
     }
 
-    _quit = true;
+    _quit.store(true);
 }
 
-bool GameContext::hasChildContext() {
+const GameContext::PerformanceInfo& GameContext::getPerformanceInfo() const {
+    return _performanceInfo;
+}
+
+int GameContext::getCurrentStepOrdinal() const {
+    return _stepOrdinal;
+}
+
+///////////////////////////////////////////////////////////////////////////
+// CHILD CONTEXT SUPPORT                                                 //
+///////////////////////////////////////////////////////////////////////////
+
+void GameContext::attachChildContext(std::unique_ptr<GameContext> aChildContext) {
+    if (hasChildContext()) {
+        throw hg::TracedLogicError{"A child context is already attached"};
+    }
+    _childContext = std::move(aChildContext);
+    _childContext->_parentContext = this;
+}
+
+std::unique_ptr<GameContext> GameContext::detachChildContext() {
+    if (hasChildContext() && isChildContextJoinable()) {
+        throw hg::TracedLogicError("Cannot detach a running child context - stop and join it first");
+    }
+
+    return std::move(_childContext);
+}
+
+bool GameContext::hasChildContext() const {
     return (_childContext != nullptr);
+}
+
+bool GameContext::isChildContextJoinable() const {
+    if (!hasChildContext()) {
+        throw hg::TracedLogicError{"No child context is currently attached"};
+    }
+    return _childContextThread.joinable();
 }
 
 GameContext* GameContext::getChildContext() const {
     return _childContext.get();
 }
 
-int GameContext::stopChildContext() {
-    assert(hasChildContext());
+void GameContext::startChildContext(int aSteps) {
+    if (!hasChildContext()) {
+        throw hg::TracedLogicError{"No child context is currently attached"};
+    }
+
+    if (_childContextThread.joinable()) {
+        throw hg::TracedLogicError{"The previous child context must be stopped and joined first"};
+    }
+
+    _childContext->_quit.store(false);
+    _childContextThread = std::thread{_runImpl, _childContext.get(), aSteps, &_childContextReturnValue};
+}
+
+int GameContext::stopAndJoinChildContext() {
+    if (!hasChildContext()) {
+        return _childContextReturnValue;
+    }
 
     _childContext->stop();
-    _childContextThread.join();
-    _childContext.reset();
+
+    if (_childContextThread.joinable()) {
+        _childContextThread.join();
+    }
 
     return _childContextReturnValue;
 }
 
-void GameContext::runChildContext(std::unique_ptr<GameContext> childContext) {
-    assert(!hasChildContext());
-
-    _childContext = std::move(childContext);
-    _childContext->_parentContext = this;
-    _childContextThread = std::thread{_runImpl, _childContext.get(), &_childContextReturnValue};
-}
+///////////////////////////////////////////////////////////////////////////
+// PRIVATE METHODS                                                       //
+///////////////////////////////////////////////////////////////////////////
 
 namespace {
+
+#ifdef NDEBUG
+    // If we're in Debug mode, we don't want to catch and handle
+    // exceptions, but rather let the IDE break the program.
+    #define CATCH_EXCEPTIONS_TOP_LEVEL
+#endif // !NDEBUG
+
+int DoSingleQaoIteration(hg::QAO_Runtime& runtime, std::int32_t eventFlags) {
+    runtime.startStep();
+    bool done = false;
+    do {
+#ifdef CATCH_EXCEPTIONS_TOP_LEVEL
+        try {
+            runtime.advanceStep(done, eventFlags);
+        }
+        catch (std::exception& ex) {
+            std::cout << "Exception caught: " << ex.what() << '\n';
+            return 1;
+        }
+        catch (...) {
+            std::cout << "Unknown exception caught!\n";
+            return 2;
+        }
+#else
+        runtime.advanceStep(done, eventFlags);
+#endif
+    } while (!done);
+
+    return 0;
+}
 
 using hg::QAO_Event;
 using hg::QAO_ALL_EVENT_FLAGS;
@@ -263,38 +339,56 @@ using std::chrono::duration_cast;
 
 } // namespace
 
-void GameContext::_runImpl(hg::not_null<GameContext*> context, hg::not_null<int*> retVal) {
-    const TimingDuration deltaTime = context->getRuntimeConfig().getDeltaTime();
+void GameContext::_runImpl(hg::not_null<GameContext*> aContext,
+                           int aMaxSteps,
+                           hg::not_null<int*> aReturnValue) {
+    if (aMaxSteps == 0) {
+        return;
+    }
+
+    const auto maxFramesBetweenDisplays = aContext->_runtimeConfig.getMaxFramesBetweenDisplays();
+    const TimingDuration deltaTime = aContext->_runtimeConfig.getDeltaTime();
     TimingDuration accumulatorTime = deltaTime;
     auto currentTime = steady_clock::now();
 
     PerformanceInfo perfInfo;
     hg::util::Stopwatch frameToFrameStopwatch;
 
-    while (!context->_quit) {
+    hg::PZInteger stepsCovered = 0;
+
+    while (aContext->_quit.load() == false) {
+        if (aMaxSteps > 0 && stepsCovered >= aMaxSteps) {
+            break;
+        }
+
         perfInfo.frameToFrameTime = frameToFrameStopwatch.restart<microseconds>();
 
-        context->_stepOrdinal += 1;
+        aContext->_stepOrdinal += 1;
 
         auto now = steady_clock::now();
         accumulatorTime += duration_cast<TimingDuration>(now - currentTime);
         currentTime = now;
 
-        for (int i = 0; i < context->getRuntimeConfig().getMaxFramesBetweenDisplays(); i += 1) {
-            if (accumulatorTime < deltaTime) {
+        for (int i = 0; i < maxFramesBetweenDisplays; i += 1) {
+            if (aMaxSteps > 0 && stepsCovered >= aMaxSteps) {
+                break;
+            }
+            if ((accumulatorTime < deltaTime)) {
                 break;
             }
 
             // Run all events except FinalizeFrame (and Draws if headless):
             {
                 hg::util::Stopwatch stopwatch;
-                if (context->isHeadless()) {
-                    (*retVal) = DoSingleQaoIteration(context->_qaoRuntime, QAO_EVENT_MASK_ALL_EXCEPT_DRAW_AND_FINALIZE);
+                if (aContext->isHeadless()) {
+                    (*aReturnValue) = DoSingleQaoIteration(aContext->_qaoRuntime,
+                                                           QAO_EVENT_MASK_ALL_EXCEPT_DRAW_AND_FINALIZE);
                 }
                 else {
-                    (*retVal) = DoSingleQaoIteration(context->_qaoRuntime, QAO_EVENT_MASK_ALL_EXCEPT_FINALIZE);
+                    (*aReturnValue) = DoSingleQaoIteration(aContext->_qaoRuntime,
+                                                           QAO_EVENT_MASK_ALL_EXCEPT_FINALIZE);
                 }
-                if ((*retVal) != 0) {
+                if ((*aReturnValue) != 0) {
                     return;
                 }
                 perfInfo.updateAndDrawTime = stopwatch.getElapsedTime<microseconds>();
@@ -302,6 +396,7 @@ void GameContext::_runImpl(hg::not_null<GameContext*> context, hg::not_null<int*
 
             perfInfo.consecutiveUpdateLoops = i + 1;
             accumulatorTime -= deltaTime;
+            stepsCovered += 1;
         } // End for
 
         // Prevent buildup in accumulator in case the program is not meeting time requirements
@@ -310,24 +405,25 @@ void GameContext::_runImpl(hg::not_null<GameContext*> context, hg::not_null<int*
         // FinalizeFrame event:
         {
             hg::util::Stopwatch stopwatch;
-            (*retVal) = DoSingleQaoIteration(context->_qaoRuntime, QAO_EVENT_MASK_FINALIZE);
-            if ((*retVal) != 0) {
+            (*aReturnValue) = DoSingleQaoIteration(aContext->_qaoRuntime, QAO_EVENT_MASK_FINALIZE);
+            if ((*aReturnValue) != 0) {
                 return;
             }
             perfInfo.finalizeTime = stopwatch.getElapsedTime<microseconds>();
         }
 
         // Do post step actions:
-        context->_pollPostStepActions();
+        aContext->_pollPostStepActions();
 
         // Record performance data:
         perfInfo.totalTime = perfInfo.updateAndDrawTime + perfInfo.finalizeTime;
-        context->_performanceInfo = perfInfo;
+        aContext->_performanceInfo = perfInfo;
     } // End while
 
-    (*retVal) = 0;
+    (*aReturnValue) = 0;
 }
 
+//! LEGACY
 void GameContext::_insertPostStepAction(std::function<void(GameContext&)> action, hg::PZInteger delay) {
     const auto listIndex = hg::ToSz(delay);
     if (listIndex >= _postStepActions.size()) {
@@ -339,6 +435,7 @@ void GameContext::_insertPostStepAction(std::function<void(GameContext&)> action
     list.push_back(action);
 }
 
+// LEGACY
 void GameContext::_pollPostStepActions() {
     if (_postStepActions.empty()) {
         return;
@@ -353,4 +450,5 @@ void GameContext::_pollPostStepActions() {
     _postStepActions.pop_front();
 }
 
-}
+} // namespace spempe
+} // namespace jbatnozic

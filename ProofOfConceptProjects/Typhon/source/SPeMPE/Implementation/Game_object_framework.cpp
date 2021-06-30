@@ -7,6 +7,7 @@
 
 #include <cassert>
 
+namespace jbatnozic {
 namespace spempe {
 
 GameContext& GameObjectBase::ctx() const {
@@ -60,3 +61,4 @@ void SynchronizedObject::syncDestroy() const {
 }
 
 } // namespace spempe
+} // namespace jbatnozic

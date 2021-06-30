@@ -6,6 +6,7 @@
 #include <chrono>
 #include <iostream>
 
+namespace jbatnozic {
 namespace spempe {
 
 namespace {
@@ -125,3 +126,4 @@ void NetworkingManager::handleEvents() {
 }
 
 } // namespace spempe
+} // namespace jbatnozic

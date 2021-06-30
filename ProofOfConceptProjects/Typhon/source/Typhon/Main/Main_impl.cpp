@@ -158,7 +158,7 @@ try
 	QAO_PCreate<MainMenu>(&_gameContext->getQaoRuntime());
 
 	// Run:
-	const int retVal = _gameContext->run();
+	const int retVal = _gameContext->runFor(-1);
 
 	// Teardown:
 	_gameContext.reset();

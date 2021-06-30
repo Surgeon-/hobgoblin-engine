@@ -8,6 +8,7 @@
 #include <list>
 #include <memory>
 
+namespace jbatnozic {
 namespace spempe {
 
 class NetworkingManager : public NonstateObject {
@@ -55,6 +56,7 @@ private:
 };
 
 } // namespace spempe
+} // namespace jbatnozic
 
 #endif // !SPEMPE_NETWORKING_MANAGER_HPP
 

@@ -22,7 +22,7 @@ using MWindow     = spe::WindowManagerInterface;
 #define PRIORITY_PLAYERAVATAR  5
 #define PRIORITY_WINDOWMGR     0
 
-#define STATE_BUFFERING_LENGTH 3
+#define STATE_BUFFERING_LENGTH 0
 
 ///////////////////////////////////////////////////////////////////////////
 // PLAYER CONTROLS                                                       //

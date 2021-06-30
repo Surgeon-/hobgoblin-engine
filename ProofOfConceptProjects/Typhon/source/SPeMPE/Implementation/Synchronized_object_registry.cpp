@@ -2,6 +2,7 @@
 #include <SPeMPE/Include/Game_object_framework.hpp>
 #include <SPeMPE/Include/Synchronized_object_registry.hpp>
 
+namespace jbatnozic {
 namespace spempe {
 
 namespace {
@@ -130,3 +131,4 @@ void SynchronizedObjectRegistry::syncObjectDestroy(const SynchronizedObject* obj
 }
 
 } // namespace spempe
+} // namespace jbatnozic

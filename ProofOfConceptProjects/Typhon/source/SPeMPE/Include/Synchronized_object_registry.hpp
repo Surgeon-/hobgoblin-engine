@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+namespace jbatnozic {
 namespace spempe {
 
 using SyncId = std::int64_t;
@@ -47,6 +48,7 @@ private:
 };
 
 } // namespace spempe
+} // namespace jbatnozic
 
 #endif // !SPEMPE_SYNCHRONIZED_OBJECT_REGISTRY_HPP
 

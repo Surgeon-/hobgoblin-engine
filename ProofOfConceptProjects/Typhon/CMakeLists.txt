@@ -25,6 +25,7 @@ set(TYPHON_SOURCE_ALL
     source/SPeMPE/Include/Networking_manager.hpp
     source/SPeMPE/Include/Game_context.hpp
     source/SPeMPE/SPeMPE.hpp
+    source/SPeMPE/Implementation/Context_components.cpp
     source/SPeMPE/Implementation/Networking_manager.cpp
     source/SPeMPE/Implementation/Game_context.cpp
     source/SPeMPE/Implementation/Synchronized_object_registry.cpp
