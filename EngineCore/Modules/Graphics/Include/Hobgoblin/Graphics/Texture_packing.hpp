@@ -20,8 +20,10 @@ enum class TexturePackingHeuristic {
 	ContactPointRule
 };
 
-std::vector<util::Rectangle<PZInteger>> PackTexture(sf::Texture& texture, const std::vector<sf::Image*>& images,
-                                                    TexturePackingHeuristic heuristic, float* occupancy = nullptr);
+std::vector<util::Rectangle<PZInteger>> PackTexture(sf::Texture& texture, 
+                                                    const std::vector<sf::Image*>& images,
+                                                    TexturePackingHeuristic heuristic, 
+                                                    float* occupancy = nullptr);
 
 } // namespace gr
 HOBGOBLIN_NAMESPACE_END

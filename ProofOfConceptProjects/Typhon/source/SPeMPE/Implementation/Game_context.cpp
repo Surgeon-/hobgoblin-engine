@@ -38,7 +38,6 @@ GameContext::GameContext(const ResourceConfig& resourceConfig, const RuntimeConf
     : _resourceConfig{resourceConfig}
     , _runtimeConfig{runtimeConfig}
     , _qaoRuntime{this}
-    , _windowManager{_qaoRuntime.nonOwning()} //! LEGACY
     , _networkingManager{_qaoRuntime.nonOwning()} //! LEGACY
     , _syncObjReg{_networkingManager.getNode()} //! LEGACY
     , _components{100} // TODO
@@ -86,14 +85,6 @@ void GameContext::setToMode(Mode mode) {
         // TODO _networkingManager.reset();
     }
     _syncObjReg.setNode(_networkingManager.getNode());
-
-    // Configure WindowManager:
-    if (isHeadless()) {
-        _windowManager.initAsHeadless();
-    }
-    else {
-        _windowManager.create();
-    }
 }
 
 bool GameContext::isPrivileged() const {
@@ -170,10 +161,6 @@ void GameContext::detachComponent(ContextComponent& aComponent) {
 
 std::string GameContext::getComponentTableString(char aSeparator) const {
     return _components.toString(aSeparator);
-}
-
-WindowManager& GameContext::getWindowManager() {
-    return _windowManager;
 }
 
 NetworkingManager& GameContext::getNetworkingManager() {

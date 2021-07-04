@@ -156,10 +156,6 @@ public:
 
     //! LEGACY
     [[deprecated]]
-    WindowManager& getWindowManager();
-
-    //! LEGACY
-    [[deprecated]]
     NetworkingManager& getNetworkingManager();
 
     //! LEGACY
@@ -248,7 +244,6 @@ private:
     // Game object management:
     hg::QAO_Runtime _qaoRuntime;
 
-    WindowManager _windowManager; //! LEGACY
     NetworkingManager _networkingManager; //! LEGACY
     SynchronizedObjectRegistry _syncObjReg; //! LEGACY
 
@@ -284,6 +279,25 @@ private:
     [[deprecated]]
     void _pollPostStepActions();
 };
+
+template <class taComponent>
+void GameContext::attachComponent(taComponent& aComponent) {
+    _components.attachComponent(aComponent);
+}
+
+template <class taComponent>
+void GameContext::attachAndOwnComponent(std::unique_ptr<taComponent> aComponent) {
+    if (!aComponent) {
+        throw hg::TracedLogicError{"Cannot attach null component"};
+    }
+    _components.attachComponent(*aComponent);
+    _ownedComponents.push_back(std::move(aComponent));
+}
+
+template <class taComponent>
+taComponent& GameContext::getComponent() const {
+    return _components.getComponent<taComponent>();
+}
 
 } // namespace spempe
 } // namespace jbatnozic

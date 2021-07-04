@@ -8,75 +8,117 @@
 
 #include <SPeMPE/Include/Game_object_framework.hpp>
 #include <SPeMPE/Include/Keyboard_input.hpp>
+#include <SPeMPE/Include/Window_manager_interface.hpp>
+
+#include <optional>
 
 namespace jbatnozic {
 namespace spempe {
 
-class WindowManager : public NonstateObject {
+namespace hg = jbatnozic::hobgoblin;
+
+class WindowManager
+    : public WindowManagerInterface
+    , public NonstateObject {
 public:
-    enum class DrawPosition {
-        Fill,
-        Fit,
-        Stretch,
-        Centre
-    };
+    WindowManager(hg::QAO_RuntimeRef aRuntimeRef,
+                  int aExecutionPriority);
 
-    WindowManager(hg::QAO_RuntimeRef runtimeRef);
+    ///////////////////////////////////////////////////////////////////////////
+    // CONFIGURATION                                                         //
+    ///////////////////////////////////////////////////////////////////////////
 
-    void init(sf::VideoMode windowVideoMode,
-              const sf::String& windowTitle,
-              sf::Vector2u mainRenderTextureSize,
-              sf::Uint32 windowStyle = sf::Style::Default,
-              const sf::ContextSettings& windowContextSettings = sf::ContextSettings{},
-              const sf::ContextSettings& mainRenderTextureContextSettings = sf::ContextSettings{}
-    );
+    void setToHeadlessMode(const TimingConfig& aTimingConfig) override;
 
-    void initAsHeadless();
+    void setToNormalMode(const WindowConfig& aWindowConfig,
+                         const MainRenderTextureConfig& aMainRenderTextureConfig,
+                         const TimingConfig& aTimingConfig) override;
 
-    void create(); // TODO Temp.
+    ///////////////////////////////////////////////////////////////////////////
+    // WINDOW MANAGEMENT                                                     //
+    ///////////////////////////////////////////////////////////////////////////
 
+    //! LEGACY
+    [[deprecated]]
     sf::RenderWindow& getWindow(); // TODO Temp.
+
+    sf::Vector2u getWindowSize() const override;
+
+    bool getWindowHasFocus() const override;
+
+    ///////////////////////////////////////////////////////////////////////////
+    // GRAPHICS & DRAWING                                                    //
+    ///////////////////////////////////////////////////////////////////////////
+
+    //! LEGACY
+    [[deprecated]]
     sf::RenderTexture& getMainRenderTexture();
-    hg::gr::Canvas& getCanvas();
+
+    hg::gr::Canvas& getCanvas() override;
 
     void drawMainRenderTexture(DrawPosition drawPosition); // TODO Temp. - To private
 
-    // Input:
+    void setMainRenderTextureDrawPosition(DrawPosition aDrawPosition) override;
+
+    ///////////////////////////////////////////////////////////////////////////
+    // VIEWS                                                                 //
+    ///////////////////////////////////////////////////////////////////////////
+
+    void setViewCount(hg::PZInteger viewCount) override;
+
+    hg::PZInteger getViewCount() const override;
+
+    sf::View& getView(hg::PZInteger viewIndex = 0) override;
+
+    const sf::View& getView(hg::PZInteger viewIndex = 0) const override;
+
+    ///////////////////////////////////////////////////////////////////////////
+    // GUI                                                                   //
+    ///////////////////////////////////////////////////////////////////////////
+
+    ///////////////////////////////////////////////////////////////////////////
+    // KEYBOARD & MOUSE INPUT                                                //
+    ///////////////////////////////////////////////////////////////////////////
+
     KbInputTracker& getKeyboardInput();
 
     // TODO MouseInputTracker& getMouseInput();
 
-    sf::Vector2f getMousePos(hg::PZInteger viewIndex = 0) const { // TODO - To .cpp file
-        auto pixelPos = sf::Mouse::getPosition(_window);
-        return _window.mapPixelToCoords(pixelPos, getView(viewIndex));
+    sf::Vector2f getMousePos(hg::PZInteger viewIndex = 0) const override { // TODO - To .cpp file
+        auto pixelPos = sf::Mouse::getPosition(*_window);
+        return _window->mapPixelToCoords(pixelPos, getView(viewIndex));
     }
 
-    // GUI:
-    void setGuiScale();
-    void getGuiScale() const;
-    void getGuiWidth() const;
-    void getGuiHeight() const;
+private:
+    // Configuration:
+    bool _headless;
+
+    std::chrono::microseconds _deltaTime;
+    bool _preciseTiming = true;
+    hg::util::Stopwatch _frameDurationStopwatch;
+
+    // Window management:
+    std::optional<sf::RenderWindow> _window;
+
+    // Graphics & drawing:
+    std::optional<sf::RenderTexture> _mainRenderTexture;
+    std::optional<hg::gr::CanvasAdapter> _windowToCanvasAdapter;
+
+    DrawPosition _mainRenderTextureDrawPos = DrawPosition::Fit;
 
     // Views:
-    void setViewCount(hg::PZInteger viewCount);
-    hg::PZInteger getViewCount() const noexcept;
-    sf::View& getView(hg::PZInteger viewIndex = 0);
-    const sf::View& getView(hg::PZInteger viewIndex = 0) const;
+    std::optional<hg::gr::MultiViewRenderTargetAdapter> _mainRenderTextureViewAdapter;
 
-protected:
+    // GUI:
+
+    // Keyboard & mouse input:
+    KbInputTracker _kbi;
+
     void _eventPostUpdate() override;
     void _eventDraw2() override;
     void _eventFinalizeFrame() override;
 
-private:
-    sf::RenderWindow _window;
-    sf::RenderTexture _mainRenderTexture;
-    hg::gr::CanvasAdapter _windowAdapter;
-    hg::gr::MultiViewRenderTargetAdapter _mainRenderTextureAdapter;
-    KbInputTracker _kbi;
-    hg::util::Stopwatch _frameDurationStopwatch;
-    bool _isHeadless = false;
-
+    void _drawMainRenderTexture();
     void _finalizeFrameByDisplayingWindow();
     void _finalizeFrameBySleeping();
 };

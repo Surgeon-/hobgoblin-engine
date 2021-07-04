@@ -217,7 +217,7 @@ void EnvironmentManager::_eventPostUpdate() {
 }
 
 void EnvironmentManager::_eventDraw1() {
-    auto& view = ctx(MWindow).getView();
+    auto& view = ccomp<spempe::WindowManagerInterface>().getView();
     hg::PZInteger startX = std::max(0, (int)std::floor((view.getCenter().x - view.getSize().x / 2.f) / _cellResolution));
     hg::PZInteger startY = std::max(0, (int)std::floor((view.getCenter().y - view.getSize().y / 2.f) / _cellResolution));
 
@@ -239,7 +239,7 @@ void EnvironmentManager::_eventDraw1() {
         sf::RenderStates states;
         states.texture = (*_spriteCache.begin()).second.getSubsprite(0).getTexture(); // TODO Fragile!
 
-        ctx(MWindow).getCanvas().draw(vertices, states);
+        ccomp<spempe::WindowManagerInterface>().getCanvas().draw(vertices, states);
     }
 }
 

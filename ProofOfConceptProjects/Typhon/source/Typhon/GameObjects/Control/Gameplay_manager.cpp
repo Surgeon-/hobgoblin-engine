@@ -119,18 +119,20 @@ void GameplayManager::_eventUpdate() {
     }
 
     // Camera movement:
-    auto& view = ctx(MWindow).getView();
+    if (!ctx().isHeadless()) {
+        auto& view = ccomp<spempe::WindowManagerInterface>().getView();
 
-    const bool left  = ctx(DKeyboard).keyPressed(KbKey::J);
-    const bool right = ctx(DKeyboard).keyPressed(KbKey::L);
-    const bool up    = ctx(DKeyboard).keyPressed(KbKey::I);
-    const bool down  = ctx(DKeyboard).keyPressed(KbKey::K);
+        const bool left = ctx(DKeyboard).keyPressed(KbKey::J);
+        const bool right = ctx(DKeyboard).keyPressed(KbKey::L);
+        const bool up = ctx(DKeyboard).keyPressed(KbKey::I);
+        const bool down = ctx(DKeyboard).keyPressed(KbKey::K);
 
-    if (!left && !right && !up && !down) return;
+        if (!left && !right && !up && !down) return;
 
-    const float moveSpeed = 16.f;
-    
-    view.move({moveSpeed * static_cast<float>(right - left), moveSpeed * static_cast<float>(down - up)});
+        const float moveSpeed = 16.f;
+
+        view.move({moveSpeed * static_cast<float>(right - left), moveSpeed * static_cast<float>(down - up)});
+    }
 }
 
 void GameplayManager::_eventPostUpdate() {
@@ -169,12 +171,12 @@ void GameplayManager::_eventDrawGUI() {
 
         text.setString(sstream.str());
 
-        ctx(MWindow).getCanvas().draw(text);
+        ccomp<spempe::WindowManagerInterface>().getCanvas().draw(text);
     }
 
     // DRAW PLAYERS LEFT:
     {
-        const float guiWidth = static_cast<float>(ctx(MWindow).getWindow().getSize().x);
+        const float guiWidth = static_cast<float>(ccomp<spempe::WindowManagerInterface>().getWindowSize().x);
 
         sf::Text text;
         text.setFont(hg::gr::BuiltInFonts::getFont(hg::gr::BuiltInFonts::TitilliumRegular));
@@ -191,7 +193,7 @@ void GameplayManager::_eventDrawGUI() {
 
         text.setString("Players left: " + std::to_string(playerCount));
 
-        ctx(MWindow).getCanvas().draw(text);
+        ccomp<spempe::WindowManagerInterface>().getCanvas().draw(text);
     }
 }
 

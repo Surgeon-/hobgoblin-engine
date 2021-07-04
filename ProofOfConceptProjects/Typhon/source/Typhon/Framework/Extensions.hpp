@@ -56,8 +56,7 @@ spempe::WindowManager& GetWindowManager(spempe::GameContext& ctx);
     enum ContextTagGameplayManager    { MGameplay }; \
     enum ContextTagNetworkingManager  { MNetworking }; \
     enum ContextTagPhysicsSpace       { DPhysicsSpace }; \
-    enum ContextTagSprite             { DSprite }; \
-    enum ContextTagWindowManager      { MWindow }
+    enum ContextTagSprite             { DSprite };
 
 #define PASTE_CTX_METHOD_OVERLOADS \
     ControlsManager& ctx(ContextTagControlsManager) const { return GetControlsManager(ctx()); } \
@@ -67,7 +66,6 @@ spempe::WindowManager& GetWindowManager(spempe::GameContext& ctx);
     spempe::NetworkingManager& ctx(ContextTagNetworkingManager) const { return GetNetworkingManager(ctx()); } \
     cpSpace* ctx(ContextTagPhysicsSpace) const { return GetPhysicsSpace(ctx()); } \
     template <class T> \
-    const hg::gr::Multisprite& ctx(ContextTagSprite, T&& val) const { return GetSprite(ctx(), std::forward<T>(val)); } \
-    spempe::WindowManager& ctx(ContextTagWindowManager) const { return GetWindowManager(ctx()); } \
+    const hg::gr::Multisprite& ctx(ContextTagSprite, T&& val) const { return GetSprite(ctx(), std::forward<T>(val)); }
 
 #endif // !TYPHON_FRAMEWORK_EXTENSIONS_HPP

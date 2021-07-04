@@ -91,7 +91,7 @@ void PhysicsBullet::_eventPostUpdate() {
 }
 
 void PhysicsBullet::_eventDraw1() {
-    auto& canvas = ctx(MWindow).getCanvas();
+    auto& canvas = ccomp<spempe::WindowManagerInterface>().getCanvas();
     auto& self = _ssch.getCurrentState();
 
     auto sprite = ctx(DSprite, SpriteId::Plasma);

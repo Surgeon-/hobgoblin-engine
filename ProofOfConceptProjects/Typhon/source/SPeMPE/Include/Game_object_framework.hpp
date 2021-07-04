@@ -24,6 +24,13 @@ public:
     using hg::QAO_Base::QAO_Base;
     
     GameContext& ctx() const;
+
+    //! Shorthand to get one of the context components of the context 
+    //! in which this object lives.
+    template <class taComponent>
+    taComponent& ccomp() {
+        return ctx().getComponent<taComponent>();
+    }
 };
 
 // I:

@@ -56,7 +56,7 @@ void MainMenu::_eventUpdate() {
 #define SOLO 3
 #define GAME_MASTER 4
 
-  int mode = InputPrompt<int>("mode - 1 = host; 2 = client, 3 = solo, 4 = GM", 2);
+    int mode = InputPrompt<int>("mode - 1 = host; 2 = client, 3 = solo, 4 = GM", 2);
     if (mode == HOST) {
         // Start a local server in the background:
         auto serverCtx = std::make_unique<GameContext>(ctx().getResourceConfig(), 
@@ -67,6 +67,9 @@ void MainMenu::_eventUpdate() {
         const hg::PZInteger clientCount = InputPrompt<hg::PZInteger>("client count", 2);
 
         serverCtx->setToMode(GameContext::Mode::Server);
+        serverCtx->getComponent<spempe::WindowManagerInterface>().setToHeadlessMode(
+            spempe::WindowManagerInterface::TimingConfig(60, false, false, true)
+        );
         serverCtx->getNetworkingManager().getServer().start(localPort);
         serverCtx->getNetworkingManager().getServer().resize(clientCount);
         serverCtx->getNetworkingManager().getServer().setTimeoutLimit(std::chrono::seconds{5});
@@ -78,6 +81,13 @@ void MainMenu::_eventUpdate() {
 
         // Connect to the server:
         ctx().setToMode(GameContext::Mode::Client);
+        ctx().getComponent<spempe::WindowManagerInterface>().setToNormalMode(
+            spempe::WindowManagerInterface::WindowConfig(sf::VideoMode::getDesktopMode(), "Typhon", sf::Style::Fullscreen),
+            spempe::WindowManagerInterface::MainRenderTextureConfig({sf::VideoMode::getDesktopMode().width,
+                                                                     sf::VideoMode::getDesktopMode().height}),
+            spempe::WindowManagerInterface::TimingConfig(60, false, true, true)
+        );
+
         std::cout << "Connecting to self (IP = " << sf::IpAddress::LocalHost << ")\n";
         // ctx(MNetworking).getClient().connect(0, sf::IpAddress::LocalHost, serverPort);
         ctx(MNetworking).getClient().connectLocal(server);
@@ -94,11 +104,23 @@ void MainMenu::_eventUpdate() {
         const std::uint16_t serverPort = InputPrompt<std::uint16_t>("server port", 8888);
 
         ctx().setToMode(GameContext::Mode::Client);
+        ctx().getComponent<spempe::WindowManagerInterface>().setToNormalMode(
+            spempe::WindowManagerInterface::WindowConfig(sf::VideoMode::getDesktopMode(), "Typhon", sf::Style::Fullscreen),
+            spempe::WindowManagerInterface::MainRenderTextureConfig({sf::VideoMode::getDesktopMode().width,
+                                                                     sf::VideoMode::getDesktopMode().height}),
+            spempe::WindowManagerInterface::TimingConfig(60, false, true, true)
+        );
         ctx(MNetworking).getClient().connect(localPort, serverIp, serverPort);
         ctx(MNetworking).getClient().setTimeoutLimit(std::chrono::seconds{5});
     }
     else if (mode == SOLO) {
         ctx().setToMode(GameContext::Mode::Solo);
+        ctx().getComponent<spempe::WindowManagerInterface>().setToNormalMode(
+            spempe::WindowManagerInterface::WindowConfig(sf::VideoMode::getDesktopMode(), "Typhon", sf::Style::Fullscreen),
+            spempe::WindowManagerInterface::MainRenderTextureConfig({sf::VideoMode::getDesktopMode().width,
+                                                                     sf::VideoMode::getDesktopMode().height}),
+            spempe::WindowManagerInterface::TimingConfig(60, false, true, true)
+        );
         generateTerrain(ctx());
 
         //PhysicsPlayer::VisibleState vs;
@@ -109,6 +131,12 @@ void MainMenu::_eventUpdate() {
     }
     else if (mode == GAME_MASTER) {
         ctx().setToMode(GameContext::Mode::GameMaster);
+        ctx().getComponent<spempe::WindowManagerInterface>().setToNormalMode(
+            spempe::WindowManagerInterface::WindowConfig(sf::VideoMode::getDesktopMode(), "Typhon", sf::Style::Fullscreen),
+            spempe::WindowManagerInterface::MainRenderTextureConfig({sf::VideoMode::getDesktopMode().width,
+                                                                     sf::VideoMode::getDesktopMode().height}),
+            spempe::WindowManagerInterface::TimingConfig(60, false, true, true)
+        );
         ctx(MNetworking).getServer().start(InputPrompt<std::uint16_t>("local port - 0 for any", 8888));
         ctx(MNetworking).getServer().resize(InputPrompt<hg::PZInteger>("client count", 2));
         ctx(MNetworking).getServer().setTimeoutLimit(std::chrono::seconds{5});

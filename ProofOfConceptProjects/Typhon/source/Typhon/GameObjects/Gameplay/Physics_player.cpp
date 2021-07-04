@@ -269,8 +269,8 @@ void PhysicsPlayer::_eventUpdate() {
     }
 
     // MOVE CAMERA:
-    {
-        auto& view = ctx(MWindow).getView();
+    if (!ctx().isHeadless()) {
+        auto& view = ccomp<spempe::WindowManagerInterface>().getView();
         auto& self = _ssch.getCurrentState();
 
         if (self.playerIndex == ctx().getLocalPlayerIndex()) {
@@ -304,7 +304,7 @@ void PhysicsPlayer::_eventPostUpdate() {
 }
 
 void PhysicsPlayer::_eventDraw1() {
-    auto& canvas = ctx(MWindow).getCanvas();
+    auto& canvas = ccomp<spempe::WindowManagerInterface>().getCanvas();
     auto& self = _ssch.getCurrentState();
 
     auto glow = ctx(DSprite, SpriteId::WhiteGlow).getSubsprite(0);
@@ -312,21 +312,21 @@ void PhysicsPlayer::_eventDraw1() {
     glow.setPosition(self.x, self.y);
     glow.setColor(*PLAYER_COLORS[self.playerIndex]);
     glow.setScale({1.25f, 1.25f});
-    ctx(MWindow).getCanvas().draw(glow);
+    ccomp<spempe::WindowManagerInterface>().getCanvas().draw(glow);
 
     auto sprite = ctx(DSprite, SpriteId::Ship).getSubsprite(0);
 
     sprite.setOrigin(sprite.getLocalBounds().width / 2, sprite.getLocalBounds().height / 2);
     sprite.setPosition(self.x, self.y);
     sprite.setRotation(hg::math::RadToDeg(self.angle) + 90.f);
-    ctx(MWindow).getCanvas().draw(sprite);
+    ccomp<spempe::WindowManagerInterface>().getCanvas().draw(sprite);
 }
 
 void PhysicsPlayer::_eventDrawGUI() {
     auto& self = _ssch.getCurrentState();
 
     if (self.playerIndex == ctx().getLocalPlayerIndex()) {
-        const auto guiHeight = ctx(MWindow).getWindow().getSize().y;
+        const auto guiHeight = ccomp<spempe::WindowManagerInterface>().getWindowSize().y;
 
         // Shield:
         {
@@ -339,7 +339,7 @@ void PhysicsPlayer::_eventDrawGUI() {
             text.setCharacterSize(16);
             text.setString(MakeBarString(static_cast<int>(100.0 * self.shield / MAX_SHIELD)));
 
-            ctx(MWindow).getCanvas().draw(text);
+            ccomp<spempe::WindowManagerInterface>().getCanvas().draw(text);
         }
 
         // Health:
@@ -353,7 +353,7 @@ void PhysicsPlayer::_eventDrawGUI() {
             text.setCharacterSize(16);
             text.setString(MakeBarString(static_cast<int>(100.0 * self.health / MAX_HEALTH)));
 
-            ctx(MWindow).getCanvas().draw(text);
+            ccomp<spempe::WindowManagerInterface>().getCanvas().draw(text);
         }
     }
 }

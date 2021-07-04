@@ -77,7 +77,6 @@ private:
     void assertNotFinalized() const;
 };
 
-
 } // namespace gr
 HOBGOBLIN_NAMESPACE_END
 

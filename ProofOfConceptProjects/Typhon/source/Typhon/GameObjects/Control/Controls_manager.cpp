@@ -67,11 +67,11 @@ void ControlsManager::_eventPreUpdate() {
     // Local controls (not needed on independent server):
     if (ctx().getLocalPlayerIndex() != spempe::PLAYER_INDEX_NONE) {
         auto& scheduler = _schedulers[ctx().getLocalPlayerIndex()];
-        auto mousePos = ctx(MWindow).getMousePos();
+        auto mousePos = ccomp<spempe::WindowManagerInterface>().getMousePos();
         scheduler.putNewState(PlayerControls{mousePos.x,
                                              mousePos.y,
                                              sf::Mouse::isButtonPressed(sf::Mouse::Left)
-                                                && ctx(MWindow).getWindow().hasFocus(),
+                                                && ccomp<spempe::WindowManagerInterface>().getWindowHasFocus(),
                                              ctx(DKeyboard).keyPressed(KbKey::A),
                                              ctx(DKeyboard).keyPressed(KbKey::D),
                                              ctx(DKeyboard).keyPressed(KbKey::W),

@@ -16,7 +16,8 @@ const std::type_info& TyphonGameContextExtensionData::getTypeInfo() const {
 
 void ExtendGameContext(spempe::GameContext& ctx) {
     ctx.getNetworkingManager().setExecutionPriority(*PEXEPR_NETWORK_MGR);
-    ctx.getWindowManager().setExecutionPriority(*PEXEPR_WINDOW_MGR);
+    ctx.attachAndOwnComponent(std::make_unique<WindowManager>(ctx.getQaoRuntime().nonOwning(),
+                              *PEXEPR_WINDOW_MGR));
 
     auto extData = std::make_unique<TyphonGameContextExtensionData>();
 
@@ -53,7 +54,7 @@ EnvironmentManager& GetEnvironmentManager(spempe::GameContext& ctx) {
 }
 
 spempe::KbInputTracker& GetKeyboardInput(spempe::GameContext& ctx) {
-    return ctx.getWindowManager().getKeyboardInput();
+    return static_cast<WindowManager&>(ctx.getComponent<spempe::WindowManagerInterface>()).getKeyboardInput();
 }
 
 GameplayManager& GetGameplayManager(spempe::GameContext& ctx) {
@@ -78,8 +79,4 @@ cpSpace* GetPhysicsSpace(spempe::GameContext& ctx) {
     auto* p = static_cast<TyphonGameContextExtensionData*>(extData)->physicsSpace.get();
     assert(p != nullptr);
     return p;
-}
-
-spempe::WindowManager& GetWindowManager(spempe::GameContext& ctx) {
-    return ctx.getWindowManager();
 }
