@@ -30,7 +30,6 @@ ControlsManager& GetControlsManager(spempe::GameContext& ctx);
 EnvironmentManager& GetEnvironmentManager(spempe::GameContext& ctx);
 spempe::KbInputTracker& GetKeyboardInput(spempe::GameContext& ctx);
 GameplayManager& GetGameplayManager(spempe::GameContext& ctx);
-spempe::NetworkingManager& GetNetworkingManager(spempe::GameContext& ctx);
 cpSpace* GetPhysicsSpace(spempe::GameContext& ctx);
 template <class T>
 const hg::gr::Multisprite& GetSprite(spempe::GameContext& ctx, T&& val) {
@@ -54,7 +53,6 @@ spempe::WindowManager& GetWindowManager(spempe::GameContext& ctx);
     enum ContextTagEnvironmentManager { MEnvironment }; \
     enum ContextTagKeyboardInput      { DKeyboard }; \
     enum ContextTagGameplayManager    { MGameplay }; \
-    enum ContextTagNetworkingManager  { MNetworking }; \
     enum ContextTagPhysicsSpace       { DPhysicsSpace }; \
     enum ContextTagSprite             { DSprite };
 
@@ -63,7 +61,6 @@ spempe::WindowManager& GetWindowManager(spempe::GameContext& ctx);
     EnvironmentManager& ctx(ContextTagEnvironmentManager) const { return GetEnvironmentManager(ctx()); } \
     spempe::KbInputTracker& ctx(ContextTagKeyboardInput) const { return GetKeyboardInput(ctx()); } \
     GameplayManager& ctx(ContextTagGameplayManager) const { return GetGameplayManager(ctx()); } \
-    spempe::NetworkingManager& ctx(ContextTagNetworkingManager) const { return GetNetworkingManager(ctx()); } \
     cpSpace* ctx(ContextTagPhysicsSpace) const { return GetPhysicsSpace(ctx()); } \
     template <class T> \
     const hg::gr::Multisprite& ctx(ContextTagSprite, T&& val) const { return GetSprite(ctx(), std::forward<T>(val)); }

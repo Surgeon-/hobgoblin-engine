@@ -15,9 +15,12 @@ const std::type_info& TyphonGameContextExtensionData::getTypeInfo() const {
 }
 
 void ExtendGameContext(spempe::GameContext& ctx) {
-    ctx.getNetworkingManager().setExecutionPriority(*PEXEPR_NETWORK_MGR);
+    ctx.attachAndOwnComponent(std::make_unique<NetworkingManager>(ctx.getQaoRuntime().nonOwning(),
+                                                                  *PEXEPR_NETWORK_MGR,
+                                                                  2)); // TODO Magic number!
+
     ctx.attachAndOwnComponent(std::make_unique<WindowManager>(ctx.getQaoRuntime().nonOwning(),
-                              *PEXEPR_WINDOW_MGR));
+                                                              *PEXEPR_WINDOW_MGR));
 
     auto extData = std::make_unique<TyphonGameContextExtensionData>();
 
@@ -65,10 +68,6 @@ GameplayManager& GetGameplayManager(spempe::GameContext& ctx) {
     auto* p = static_cast<TyphonGameContextExtensionData*>(extData)->mainGameController.get();
     assert(p != nullptr);
     return *p;
-}
-
-spempe::NetworkingManager& GetNetworkingManager(spempe::GameContext& ctx) {
-    return ctx.getNetworkingManager();
 }
 
 cpSpace* GetPhysicsSpace(spempe::GameContext& ctx) {

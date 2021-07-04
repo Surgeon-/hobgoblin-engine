@@ -60,7 +60,7 @@ SPEMPE_GENERATE_CANNONICAL_SYNC_IMPLEMENTATIONS(PhysicsPlayer);
 PhysicsPlayer::PhysicsPlayer(QAO_RuntimeRef rtRef, SynchronizedObjectRegistry& syncObjReg, SyncId syncId,
                              const VisibleState& initialState)
     : SynchronizedObject{rtRef, SPEMPE_TYPEID_SELF, *PEXEPR_ENTITIES_ABOVE, "PhysicsPlayer", syncObjReg, syncId}
-    , _ssch{ctx().syncBufferLength}
+    , _ssch{ccomp<spempe::NetworkingManagerInterface>().getStateBufferingLength()}
 {
     for (auto& state : _ssch) {
         state = initialState;
@@ -106,7 +106,8 @@ void PhysicsPlayer::_eventUpdate() {
         }
 
         if (_health <= 0.0) {
-            Compose_PlayerDeathAnnouncement(ctx(MNetworking).getNode(), RN_COMPOSE_FOR_ALL,
+            Compose_PlayerDeathAnnouncement(ccomp<spempe::NetworkingManagerInterface>().getNode(),
+                                            RN_COMPOSE_FOR_ALL,
                                             _ssch.getCurrentState().playerIndex);
             if (!ctx().isHeadless()) {
                 std::cout << "Player " << _ssch.getCurrentState().playerIndex << " has died.\n";
@@ -226,7 +227,7 @@ void PhysicsPlayer::_eventUpdate() {
             vs.x = selfPos.x + (static_cast<float>(std::rand()) / RAND_MAX) * 24.0 - 12.0;
             vs.y = selfPos.y + (static_cast<float>(std::rand()) / RAND_MAX) * 24.0 - 12.0;
             vs.rgbaColor = PLAYER_COLORS[self.playerIndex]->toInteger();
-            auto* bullet = QAO_PCreate<PhysicsBullet>(getRuntime(), ctx().getSyncObjReg(), SYNC_ID_NEW, vs);
+            auto* bullet = QAO_PCreate<PhysicsBullet>(getRuntime(), ccomp<spempe::NetworkingManagerInterface>().getSyncObjReg(), SYNC_ID_NEW, vs);
             //bullet->initWithSpeed(this, std::atan2(controls.mouseY - selfPos.y, controls.mouseX - selfPos.x), 50.0);
             bullet->initWithSpeed(this, 0.0, 0.0);
 
@@ -265,7 +266,7 @@ void PhysicsPlayer::_eventUpdate() {
     else {
         _ssch.scheduleNewStates();
         _ssch.advance();
-        _ssch.advanceDownTo(std::max(1, ctx().syncBufferLength * 2));
+        _ssch.advanceDownTo(std::max(1, ccomp<spempe::NetworkingManagerInterface>().getStateBufferingLength() * 2));
     }
 
     // MOVE CAMERA:
@@ -273,7 +274,7 @@ void PhysicsPlayer::_eventUpdate() {
         auto& view = ccomp<spempe::WindowManagerInterface>().getView();
         auto& self = _ssch.getCurrentState();
 
-        if (self.playerIndex == ctx().getLocalPlayerIndex()) {
+        if (self.playerIndex == ccomp<spempe::NetworkingManagerInterface>().getLocalPlayerIndex()) {
             auto dist = hg::math::EuclideanDist<float>({self.x, self.y}, view.getCenter());
             if (dist < 4.f) {
                 view.setCenter({self.x, self.y});
@@ -325,7 +326,7 @@ void PhysicsPlayer::_eventDraw1() {
 void PhysicsPlayer::_eventDrawGUI() {
     auto& self = _ssch.getCurrentState();
 
-    if (self.playerIndex == ctx().getLocalPlayerIndex()) {
+    if (self.playerIndex == ccomp<spempe::NetworkingManagerInterface>().getLocalPlayerIndex()) {
         const auto guiHeight = ccomp<spempe::WindowManagerInterface>().getWindowSize().y;
 
         // Shield:

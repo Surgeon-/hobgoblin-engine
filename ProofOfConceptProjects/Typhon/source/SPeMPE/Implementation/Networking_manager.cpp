@@ -1,4 +1,5 @@
 
+#include <Hobgoblin/Common.hpp>
 #include <SPeMPE/Include/Networking_manager.hpp>
 #include <SPeMPE/Include/Game_context.hpp>
 
@@ -25,78 +26,192 @@ using namespace hg::rn;
 
 } // namespace
 
-NetworkingManager::NetworkingManager(QAO_RuntimeRef runtimeRef)
-    : NonstateObject{runtimeRef, SPEMPE_TYPEID_SELF, 0, "spempe::NetworkingManager"}
+NetworkingManager::NetworkingManager(hg::QAO_RuntimeRef aRuntimeRef,
+                                     int aExecutionPriority,
+                                     hg::PZInteger aStateBufferingLength)
+    : NonstateObject{aRuntimeRef, SPEMPE_TYPEID_SELF, aExecutionPriority, "jbatnozic::spempe::NetworkingManager"}
+    , _node{nullptr}
+    , _syncObjReg{nullptr}
+    , _stateBufferingLength{aStateBufferingLength}
 {
-    _node = hg::RN_ServerFactory::createDummyServer();
 }
 
-void NetworkingManager::initializeAsServer() {
-    _node = hg::RN_ServerFactory::createServer(RN_Protocol::UDP, "pass123", 1, 2048, RN_NetworkingStack::Default);
-    getServer().setRetransmitPredicate(RETRANSMIT_PREDICATE);
-    getServer().setUserData(&ctx());
-    _state = State::Server;
+///////////////////////////////////////////////////////////////////////////
+// CONFIGURATION                                                         //
+///////////////////////////////////////////////////////////////////////////
+
+void NetworkingManager::setToMode(Mode aMode) {
+    if (_mode == aMode) {
+        return;
+    }
+
+    _mode = aMode;
+
+    switch (_mode) {
+    case Mode::Uninitialized:
+        _localPlayerIndex.reset();
+        _node.reset();
+        _syncObjReg.reset();
+        break;
+
+    case Mode::Dummy:
+        _localPlayerIndex = PLAYER_INDEX_LOCAL_PLAYER;
+        _node = hg::RN_ServerFactory::createDummyServer();
+        _node->setUserData(&ctx());
+        _syncObjReg = std::make_unique<SynchronizedObjectRegistry>(*_node, _stateBufferingLength);
+        break;
+
+    case Mode::Server:
+        _localPlayerIndex = PLAYER_INDEX_LOCAL_PLAYER;
+        _node = hg::RN_ServerFactory::createServer(hg::RN_Protocol::UDP, "pass"); // TODO Parametrize !!!!!!!!!!!
+        _node->setUserData(&ctx());
+        getServer().setRetransmitPredicate(RETRANSMIT_PREDICATE);
+        _syncObjReg = std::make_unique<SynchronizedObjectRegistry>(*_node, _stateBufferingLength);
+        break;
+
+    case Mode::Client:
+        _localPlayerIndex = PLAYER_INDEX_UNKNOWN;
+        _node = hg::RN_ClientFactory::createClient(hg::RN_Protocol::UDP, "pass");
+        _node->setUserData(&ctx());
+        getClient().setRetransmitPredicate(RETRANSMIT_PREDICATE);
+        _syncObjReg = std::make_unique<SynchronizedObjectRegistry>(*_node, _stateBufferingLength);
+        break;
+
+    default: {}
+    }
+
+    // TODO !!!!!!!!!!!!!!!!!
 }
 
-void NetworkingManager::initializeAsClient() {
-    _node = hg::RN_ClientFactory::createClient(hg::RN_Protocol::UDP, "pass123", 2048, RN_NetworkingStack::Default);
-    getClient().setRetransmitPredicate(RETRANSMIT_PREDICATE);
-    getClient().setUserData(&ctx());
-    _state = State::Client;
+NetworkingManagerInterface::Mode NetworkingManager::getMode() const {
+    return _mode;
 }
 
-bool NetworkingManager::isServer() const noexcept {
-    return _state == State::Server;
+bool NetworkingManager::isUninitialized() const {
+    return _mode == Mode::Uninitialized;
 }
 
-bool NetworkingManager::isClient() const noexcept {
-    return _state == State::Client;
+bool NetworkingManager::isDummy() const {
+    return _mode == Mode::Dummy;
 }
 
-RN_NodeInterface& NetworkingManager::getNode() {
-    assert(_node);
+bool NetworkingManager::isServer() const {
+    return _mode == Mode::Server;
+}
+
+bool NetworkingManager::isClient() const {
+    return _mode == Mode::Client;
+}
+
+///////////////////////////////////////////////////////////////////////////
+// NODE ACCESS                                                           //
+///////////////////////////////////////////////////////////////////////////
+
+NetworkingManagerInterface::NodeType& NetworkingManager::getNode() const {
     return *_node;
 }
 
-NetworkingManager::ServerType& NetworkingManager::getServer() {
-    assert(_node && _node->isServer());
-    return static_cast<ServerType&>(*_node);
+NetworkingManagerInterface::ServerType& NetworkingManager::getServer() const {
+    assert(isServer());
+    return static_cast<ServerType&>(getNode());
 }
 
-NetworkingManager::ClientType& NetworkingManager::getClient() {
-    assert(_node && !_node->isServer());
-    return static_cast<ClientType&>(*_node);
+NetworkingManagerInterface::ClientType& NetworkingManager::getClient() const {
+    assert(isClient());
+    return static_cast<ClientType&>(getNode());
 }
+
+///////////////////////////////////////////////////////////////////////////
+// LISTENER MANAGEMENT                                                   //
+///////////////////////////////////////////////////////////////////////////
+
+void NetworkingManager::addEventListener(NetworkingEventListener& aListener) {
+    for (const auto listener : _eventListeners) {
+        if (listener == &aListener) {
+            return;
+        }
+    }
+    _eventListeners.push_back(&aListener);
+}
+
+void NetworkingManager::removeEventListener(NetworkingEventListener& aListener) {
+    _eventListeners.erase(
+        std::remove_if(_eventListeners.begin(), _eventListeners.end(),
+        [&aListener](const NetworkingEventListener* aCurr) {
+            return aCurr == &aListener;
+        }), _eventListeners.end());
+}
+
+///////////////////////////////////////////////////////////////////////////
+// SYNCHRONIZATION                                                       //
+///////////////////////////////////////////////////////////////////////////
+
+SynchronizedObjectRegistry& NetworkingManager::getSyncObjReg() {
+    if (isUninitialized()) {
+        throw hg::TracedLogicError("Method call on Uninitialized NetworkingManager");
+    }
+    return *_syncObjReg;
+}
+
+hg::PZInteger NetworkingManager::getStateBufferingLength() const {
+    if (isUninitialized()) {
+        throw hg::TracedLogicError("Method call on Uninitialized NetworkingManager");
+    }
+    return _syncObjReg->getDefaultDelay();
+}
+
+void NetworkingManager::setStateBufferingLength(hg::PZInteger aNewStateBufferingLength) {
+    if (isUninitialized()) {
+        throw hg::TracedLogicError("Method call on Uninitialized NetworkingManager");
+    }
+    _stateBufferingLength = aNewStateBufferingLength;
+    _syncObjReg->setDefaultDelay(aNewStateBufferingLength);
+}
+
+///////////////////////////////////////////////////////////////////////////
+// MISC.                                                                 //
+///////////////////////////////////////////////////////////////////////////
+
+int NetworkingManager::getLocalPlayerIndex() {
+    if (isUninitialized()) {
+        throw hg::TracedLogicError("Method call on Uninitialized NetworkingManager");
+    }
+    return *_localPlayerIndex;
+}
+
+///////////////////////////////////////////////////////////////////////////
+// PROTECTED & PRIVATE METHODS                                           //
+///////////////////////////////////////////////////////////////////////////
 
 void NetworkingManager::_eventPreUpdate() {
-    getNode().update(RN_UpdateMode::Receive);
-    handleEvents();
+    if (isUninitialized()) {
+        return;
+    }
+
+    _node->update(hg::RN_UpdateMode::Receive);
+    _handleNetworkingEvents();
 }
 
 void NetworkingManager::_eventPostUpdate() {
-    // Update all Synchronized objects
-    if (_node->isServer()) {
-        ctx().getSyncObjReg().syncStateUpdates();
+    if (isUninitialized()) {
+        return;
     }
 
-    getNode().update(RN_UpdateMode::Send);
-    handleEvents();
+    // Update all Synchronized objects
+    if (_node->isServer()) {
+        _syncObjReg->syncStateUpdates();
+    }
+
+    _node->update(hg::RN_UpdateMode::Send);
+    _handleNetworkingEvents();
 }
 
-void NetworkingManager::addEventListener(EventListener* listener) {
-    _eventListeners.push_back(listener);
-}
+void NetworkingManager::_handleNetworkingEvents() {
+    // TODO Temporary couts (move to logger)
 
-void NetworkingManager::removeEventListener(EventListener* listener) {
-    _eventListeners.remove_if(
-        [=](EventListener* listener_) {
-            return listener_ == listener;
-        });
-}
-
-void NetworkingManager::handleEvents() {
+    using hg::RN_Event;
     RN_Event event;
-    while (getNode().pollEvent(event)) {
+    while (_node->pollEvent(event)) {
         event.visit(
             [](const RN_Event::BadPassphrase& ev) {
                 std::cout << "Bad passphrase\n";
@@ -107,11 +222,11 @@ void NetworkingManager::handleEvents() {
             [this](const RN_Event::Connected& ev) {
                 if (_node->isServer()) {
                     std::cout << "New client connected\n";
-                    ctx().getSyncObjReg().syncCompleteState(*ev.clientIndex);
+                    _syncObjReg->syncCompleteState(*ev.clientIndex);
                 }
                 else {
                     std::cout << "Connected to server\n";
-                    ctx().setLocalPlayerIndex(getClient().getClientIndex() + 1);
+                    _localPlayerIndex = (getClient().getClientIndex() + 1);
                 }
             },
             [](const RN_Event::Disconnected& ev) {

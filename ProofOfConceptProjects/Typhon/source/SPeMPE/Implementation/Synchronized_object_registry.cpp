@@ -22,8 +22,9 @@ void GetIndicesForComposingToEveryone(const hg::RN_NodeInterface& node, std::vec
 
 } // namespace
 
-SynchronizedObjectRegistry::SynchronizedObjectRegistry(hg::RN_NodeInterface& node)
+SynchronizedObjectRegistry::SynchronizedObjectRegistry(hg::RN_NodeInterface& node, hg::PZInteger defaultDelay)
     : _node{&node}
+    , _defaultDelay{defaultDelay}
 {
 }
 
@@ -103,6 +104,18 @@ void SynchronizedObjectRegistry::syncCompleteState(hg::PZInteger clientIndex) {
         auto* object = mapping.second;
         object->syncCreateImpl(*_node, _recepientVec);
         object->syncUpdateImpl(*_node, _recepientVec);
+    }
+}
+
+hg::PZInteger SynchronizedObjectRegistry::getDefaultDelay() const {
+    return _defaultDelay;
+}
+
+void SynchronizedObjectRegistry::setDefaultDelay(hg::PZInteger aNewDefaultDelaySteps) {
+    _defaultDelay = aNewDefaultDelaySteps;
+    for (auto& mapping : _mappings) {
+        auto* object = mapping.second;
+        // object->_setStateSchedulerDefaultDelay(aNewDefaultDelaySteps); // TODO !!!!!!!!
     }
 }
 

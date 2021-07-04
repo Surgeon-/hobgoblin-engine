@@ -111,13 +111,13 @@ private:
 
 #define SPEMPE_GENERATE_CANNONICAL_HANDLERS(_class_name_) \
     RN_DEFINE_RPC(Create##_class_name_, RN_ARGS(::spempe::SyncId, syncId, _class_name_::VisibleState&, state)) { \
-        ::spempe::CannonicalCreateImpl<_class_name_, ::spempe::GameContext>(RN_NODE_IN_HANDLER(), syncId, state); \
+        ::spempe::CannonicalCreateImpl<_class_name_, ::spempe::GameContext, ::spempe::NetworkingManagerInterface>(RN_NODE_IN_HANDLER(), syncId, state); \
     } \
     RN_DEFINE_RPC(Update##_class_name_, RN_ARGS(::spempe::SyncId, syncId, _class_name_::VisibleState&, state)) { \
-        ::spempe::CannonicalUpdateImpl<_class_name_, ::spempe::GameContext>(RN_NODE_IN_HANDLER(), syncId, state); \
+        ::spempe::CannonicalUpdateImpl<_class_name_, ::spempe::GameContext, ::spempe::NetworkingManagerInterface>(RN_NODE_IN_HANDLER(), syncId, state); \
     } \
     RN_DEFINE_RPC(Destroy##_class_name_, RN_ARGS(::spempe::SyncId, syncId)) { \
-        ::spempe::CannonicalDestroyImpl<_class_name_, ::spempe::GameContext>(RN_NODE_IN_HANDLER(), syncId); \
+        ::spempe::CannonicalDestroyImpl<_class_name_, ::spempe::GameContext, ::spempe::NetworkingManagerInterface>(RN_NODE_IN_HANDLER(), syncId); \
     }
 
 #define SPEMPE_GENERATE_CANNONICAL_SYNC_DECLARATIONS \
@@ -136,13 +136,13 @@ private:
         Compose_Destroy##_class_name_(node, rec, getSyncId()); \
     }
 
-template <class T, class TCtx>
+template <class T, class TCtx, class taNetwMgr>
 void CannonicalCreateImpl(hg::RN_NodeInterface& node, SyncId syncId, typename T::VisibleState& state) {
     node.callIfClient(
         [&](hg::RN_ClientInterface& client) {
             auto& ctx = *client.getUserData<TCtx>();
             auto& runtime = ctx.getQaoRuntime();
-            auto& syncObjReg = ctx.getSyncObjReg();
+            auto& syncObjReg = ctx.getComponent<taNetwMgr>().getSyncObjReg();
 
             hg::QAO_PCreate<T>(&runtime, syncObjReg, syncId, state);
         });
@@ -153,13 +153,13 @@ void CannonicalCreateImpl(hg::RN_NodeInterface& node, SyncId syncId, typename T:
         });
 }
 
-template <class T, class TCtx>
+template <class T, class TCtx, class taNetwMgr>
 void CannonicalUpdateImpl(hg::RN_NodeInterface& node, SyncId syncId, typename T::VisibleState& state) {
     node.callIfClient(
         [&](hg::RN_ClientInterface& client) {
             auto& ctx = *client.getUserData<TCtx>();
             auto& runtime = ctx.getQaoRuntime();
-            auto& syncObjReg = ctx.getSyncObjReg();
+            auto& syncObjReg = ctx.getComponent<taNetwMgr>().getSyncObjReg();
             auto& object = *static_cast<T*>(syncObjReg.getMapping(syncId));
           
             const auto latency = client.getServerConnector().getRemoteInfo().meanLatency;
@@ -176,13 +176,13 @@ void CannonicalUpdateImpl(hg::RN_NodeInterface& node, SyncId syncId, typename T:
         });
 }
 
-template <class T, class TCtx>
+template <class T, class TCtx, class taNetwMgr>
 void CannonicalDestroyImpl(hg::RN_NodeInterface& node, SyncId syncId) {
     node.callIfClient(
         [&](hg::RN_ClientInterface& client) {
             auto& ctx = *client.getUserData<TCtx>();
             auto& runtime = ctx.getQaoRuntime();
-            auto& syncObjReg = ctx.getSyncObjReg();
+            auto& syncObjReg = ctx.getComponent<taNetwMgr>().getSyncObjReg();
             auto* object = static_cast<T*>(syncObjReg.getMapping(syncId));
 
             const auto latency = client.getServerConnector().getRemoteInfo().meanLatency;
@@ -190,7 +190,7 @@ void CannonicalDestroyImpl(hg::RN_NodeInterface& node, SyncId syncId) {
             const auto dt = std::chrono::duration_cast<TIME>(ctx.getRuntimeConfig().getDeltaTime());
             const auto delaySteps = static_cast<int>(latency / dt) / 2;
 
-            object->destroySelfIn(static_cast<int>(ctx.syncBufferLength) - (delaySteps + 1));
+            object->destroySelfIn(static_cast<int>(syncObjReg.getDefaultDelay()) - (delaySteps + 1));
         });
 
     node.callIfServer(

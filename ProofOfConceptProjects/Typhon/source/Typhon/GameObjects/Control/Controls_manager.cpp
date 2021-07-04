@@ -60,13 +60,20 @@ void ControlsManager::putNewControls(hg::PZInteger playerIndex, const PlayerCont
 }
 
 void ControlsManager::_eventPreUpdate() {
-    if (ctx().getLocalPlayerIndex() == spempe::PLAYER_INDEX_UNKNOWN) {
+    if (ctx().getMode() == GameContext::Mode::Initial) {
+        // Game not yet initialized
+        return;
+    }
+    if (ccomp<spempe::NetworkingManagerInterface>().getLocalPlayerIndex() == spempe::PLAYER_INDEX_UNKNOWN) {
+        // Context is a client but not yet connected to the server
         return;
     }
 
     // Local controls (not needed on independent server):
-    if (ctx().getLocalPlayerIndex() != spempe::PLAYER_INDEX_NONE) {
-        auto& scheduler = _schedulers[ctx().getLocalPlayerIndex()];
+    //if (ccomp<spempe::NetworkingManagerInterface>().getLocalPlayerIndex() != spempe::PLAYER_INDEX_LOCAL_PLAYER) {
+    if (!ctx().isHeadless() &&
+        ccomp<spempe::NetworkingManagerInterface>().getLocalPlayerIndex() >= 0) {
+        auto& scheduler = _schedulers[ccomp<spempe::NetworkingManagerInterface>().getLocalPlayerIndex()];
         auto mousePos = ccomp<spempe::WindowManagerInterface>().getMousePos();
         scheduler.putNewState(PlayerControls{mousePos.x,
                                              mousePos.y,
@@ -80,15 +87,18 @@ void ControlsManager::_eventPreUpdate() {
 
     for (auto& scheduler : _schedulers) {
         scheduler.scheduleNewStates();
-        scheduler.advanceDownTo(std::max(1, ctx().syncBufferLength * 2));
+        scheduler.advanceDownTo(std::max(1, ccomp<spempe::NetworkingManagerInterface>().getStateBufferingLength() * 2));
     }
 }
 
 void ControlsManager::_eventUpdate() {
-    if (ctx().getLocalPlayerIndex() > 0 && 
-        ctx(MNetworking).getClient().getServerConnector().getStatus() == hg::RN_ConnectorStatus::Connected) {
-        auto& scheduler = _schedulers[ctx().getLocalPlayerIndex()];
-        Compose_SetClientControls(ctx(MNetworking).getClient(), 0, scheduler.getLatestState());
+    if (ccomp<spempe::NetworkingManagerInterface>().getLocalPlayerIndex() > 0 &&
+        ccomp<spempe::NetworkingManagerInterface>().getClient().getServerConnector().getStatus()
+        == hg::RN_ConnectorStatus::Connected) {
+        auto& scheduler = _schedulers[ccomp<spempe::NetworkingManagerInterface>().getLocalPlayerIndex()];
+        Compose_SetClientControls(ccomp<spempe::NetworkingManagerInterface>().getClient(), 
+                                  0,
+                                  scheduler.getLatestState());
     }
 }
 

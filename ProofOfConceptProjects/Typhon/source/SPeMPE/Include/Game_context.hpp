@@ -26,15 +26,6 @@ namespace jbatnozic {
 namespace spempe {
 
 //! LEGACY
-constexpr int PLAYER_INDEX_UNKNOWN = -2;
-
-//! LEGACY
-constexpr int PLAYER_INDEX_NONE = -1;
-
-//! LEGACY
-constexpr int PLAYER_INDEX_LOCAL_PLAYER = 0;
-
-//! LEGACY
 constexpr class GameContext_AllowOnHost_Type {} ALLOW_ON_HOST;
 
 //! LEGACY
@@ -92,10 +83,6 @@ public:
         hg::PZInteger _maxFramesBetweenDisplays;
     };
 
-    // TODO Temp.
-    //! LEGACY
-    int syncBufferLength = 2;
-
     GameContext(const ResourceConfig& resourceConfig, const RuntimeConfig& runtimeConfig);
     ~GameContext();
 
@@ -103,20 +90,14 @@ public:
     //! round) are possible.
     void setToMode(Mode mode);
 
+    Mode getMode() const;
+
     bool isPrivileged() const;
     bool isHeadless() const;
     bool hasNetworking() const;
 
     const ResourceConfig& getResourceConfig() const;
     const RuntimeConfig& getRuntimeConfig() const;
-
-    //! LEGACY
-    [[deprecated]]
-    void setLocalPlayerIndex(int index);
-
-    //! LEGACY
-    [[deprecated]]
-    int getLocalPlayerIndex() const;
 
     //! LEGACY
     [[deprecated]]
@@ -153,14 +134,6 @@ public:
     taComponent& getComponent() const;
 
     std::string getComponentTableString(char aSeparator = '\n') const;
-
-    //! LEGACY
-    [[deprecated]]
-    NetworkingManager& getNetworkingManager();
-
-    //! LEGACY
-    [[deprecated]]
-    SynchronizedObjectRegistry& getSyncObjReg();
 
     ///////////////////////////////////////////////////////////////////////////
     // EXECUTION                                                             //
@@ -244,9 +217,6 @@ private:
     // Game object management:
     hg::QAO_Runtime _qaoRuntime;
 
-    NetworkingManager _networkingManager; //! LEGACY
-    SynchronizedObjectRegistry _syncObjReg; //! LEGACY
-
     // Context components:
     detail::ComponentTable _components;
     std::vector<std::unique_ptr<ContextComponent>> _ownedComponents;
@@ -266,8 +236,6 @@ private:
     std::deque<std::list<std::function<void(GameContext&)>>> _postStepActions; //! LEGACY
     
     std::unique_ptr<GameContextExtensionData> _extensionData; //! LEGACY
-    
-    int _localPlayerIndex = PLAYER_INDEX_UNKNOWN; //! LEGACY
 
     static void _runImpl(hg::not_null<GameContext*> aContext,
                          int aMaxSteps,

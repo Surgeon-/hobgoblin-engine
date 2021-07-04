@@ -14,7 +14,7 @@
 #include "__Experimental/Lighting.hpp"
 #include "Typhon/Terrain/Terrain.hpp"
 
-class EnvironmentManager : public StateObject, private NetworkingManager::EventListener {
+class EnvironmentManager : public StateObject, private spempe::NetworkingEventListener {
 public:
     EnvironmentManager(hg::QAO_RuntimeRef rtRef);
     ~EnvironmentManager();

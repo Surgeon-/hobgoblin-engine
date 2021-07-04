@@ -3,7 +3,9 @@
 
 #include <Typhon/Framework.hpp>
 
-class GameplayManager : public NonstateObject, private NetworkingManager::EventListener {
+class GameplayManager 
+    : public NonstateObject
+    , private spempe::NetworkingEventListener {
 public:
     GameplayManager(QAO_RuntimeRef runtimeRef);
 

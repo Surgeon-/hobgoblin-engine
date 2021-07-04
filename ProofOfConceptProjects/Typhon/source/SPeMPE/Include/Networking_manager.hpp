@@ -4,55 +4,87 @@
 #include <Hobgoblin/RigelNet.hpp>
 #include <Hobgoblin/RigelNet_Macros.hpp>
 #include <SPeMPE/Include/Game_object_framework.hpp>
+#include <SPeMPE/Include/Networking_manager_interface.hpp>
 
 #include <list>
 #include <memory>
+#include <optional>
 
 namespace jbatnozic {
 namespace spempe {
 
-class NetworkingManager : public NonstateObject {
+//! One concrete implementation of NetworkingManagerInterface.
+//! TODO: Tip on setting execution priority?
+class NetworkingManager
+    : public NetworkingManagerInterface
+    , public NonstateObject {
 public:
-    using ServerType = hg::RN_ServerInterface;
-    using ClientType = hg::RN_ClientInterface;
+    NetworkingManager(hg::QAO_RuntimeRef aRuntimeRef,
+                      int aExecutionPriority,
+                      hg::PZInteger aStateBufferingLength);
 
-    NetworkingManager(hg::QAO_RuntimeRef runtimeRef);
+    ///////////////////////////////////////////////////////////////////////////
+    // CONFIGURATION                                                         //
+    ///////////////////////////////////////////////////////////////////////////
 
-    void initializeAsServer();
-    void initializeAsClient();
+    void setToMode(Mode aMode) override;
 
-    bool isServer() const noexcept;
-    bool isClient() const noexcept;
+    Mode getMode() const override;
 
-    hg::RN_NodeInterface& getNode();
-    ServerType& getServer();
-    ClientType& getClient();
+    bool isUninitialized() const override;
+    bool isDummy() const override;
+    bool isServer() const override;
+    bool isClient() const override;
 
-    class EventListener {
-    public:
-        virtual void onNetworkingEvent(const hg::RN_Event& ev) = 0;
-    };
+    ///////////////////////////////////////////////////////////////////////////
+    // NODE ACCESS                                                           //
+    ///////////////////////////////////////////////////////////////////////////
 
-    void addEventListener(EventListener* listener);
-    void removeEventListener(EventListener* listener);
+    NodeType& getNode() const override;
 
-protected:
+    ServerType& getServer() const override;
+
+    ClientType& getClient() const override;
+
+    ///////////////////////////////////////////////////////////////////////////
+    // LISTENER MANAGEMENT                                                   //
+    ///////////////////////////////////////////////////////////////////////////
+
+    void addEventListener(NetworkingEventListener& aListener) override;
+
+    void removeEventListener(NetworkingEventListener& aListener) override;
+
+    ///////////////////////////////////////////////////////////////////////////
+    // SYNCHRONIZATION                                                       //
+    ///////////////////////////////////////////////////////////////////////////
+
+    SynchronizedObjectRegistry& getSyncObjReg() override;
+
+    hg::PZInteger getStateBufferingLength() const override;
+
+    void setStateBufferingLength(hg::PZInteger aNewStateBufferingLength) override;
+
+    ///////////////////////////////////////////////////////////////////////////
+    // MISC.                                                                 //
+    ///////////////////////////////////////////////////////////////////////////
+
+    int getLocalPlayerIndex() override;
+
+private:
+    Mode _mode = Mode::Uninitialized;
+    std::optional<int> _localPlayerIndex = PLAYER_INDEX_NONE;
+
+    std::unique_ptr<hg::RN_NodeInterface> _node;
+    std::unique_ptr<SynchronizedObjectRegistry> _syncObjReg;
+
+    std::vector<NetworkingEventListener*> _eventListeners;
+
+    hg::PZInteger _stateBufferingLength;
+
     void _eventPreUpdate() override;
     void _eventPostUpdate() override;
 
-private:
-    enum class State {
-        NotInitialized,
-        Server,
-        Client
-    };
-
-    std::unique_ptr<hg::RN_NodeInterface> _node;
-    State _state = State::NotInitialized;
-
-    std::list<EventListener*> _eventListeners;
-
-    void handleEvents();
+    void _handleNetworkingEvents();
 };
 
 } // namespace spempe

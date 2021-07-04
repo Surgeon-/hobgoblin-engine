@@ -38,12 +38,9 @@ GameContext::GameContext(const ResourceConfig& resourceConfig, const RuntimeConf
     : _resourceConfig{resourceConfig}
     , _runtimeConfig{runtimeConfig}
     , _qaoRuntime{this}
-    , _networkingManager{_qaoRuntime.nonOwning()} //! LEGACY
-    , _syncObjReg{_networkingManager.getNode()} //! LEGACY
     , _components{100} // TODO
     , _extensionData{ nullptr }
 {
-    _networkingManager.getNode().setUserData(this);
 }
 
 //! LEGACY (old impl)
@@ -60,31 +57,10 @@ GameContext::~GameContext() {
 //! LEGACY (old impl)
 void GameContext::setToMode(Mode mode) {
     _mode = mode;
+}
 
-    // Configure local player index:
-    if (_mode == Mode::Server || _mode == Mode::Initial) {
-        _localPlayerIndex = PLAYER_INDEX_NONE;
-    }
-    else if (_mode == Mode::Client) {
-        _localPlayerIndex = PLAYER_INDEX_UNKNOWN;
-    }
-    else {
-        _localPlayerIndex = PLAYER_INDEX_LOCAL_PLAYER;
-    }
-
-    // Configure NetworkingManager:
-    if (hasNetworking()) {
-        if (isPrivileged()) {
-            _networkingManager.initializeAsServer();
-        }
-        else {
-            _networkingManager.initializeAsClient();
-        }
-    }
-    else {
-        // TODO _networkingManager.reset();
-    }
-    _syncObjReg.setNode(_networkingManager.getNode());
+GameContext::Mode GameContext::getMode() const {
+    return _mode;
 }
 
 bool GameContext::isPrivileged() const {
@@ -121,14 +97,6 @@ void GameContext::addPostStepAction(hg::PZInteger delay, GameContext_AllowOnHost
     _insertPostStepAction(std::move(action), delay);
 }
 
-void GameContext::setLocalPlayerIndex(int index) {
-    _localPlayerIndex = index;
-}
-
-int GameContext::getLocalPlayerIndex() const {
-    return _localPlayerIndex;
-}
-
 void GameContext::setExtensionData(std::unique_ptr<GameContextExtensionData> extData) {
     _extensionData = std::move(extData);
 }
@@ -161,14 +129,6 @@ void GameContext::detachComponent(ContextComponent& aComponent) {
 
 std::string GameContext::getComponentTableString(char aSeparator) const {
     return _components.toString(aSeparator);
-}
-
-NetworkingManager& GameContext::getNetworkingManager() {
-    return _networkingManager;
-}
-
-SynchronizedObjectRegistry& GameContext::getSyncObjReg() {
-    return _syncObjReg;
 }
 
 ///////////////////////////////////////////////////////////////////////////

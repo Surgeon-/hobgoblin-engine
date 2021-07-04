@@ -19,7 +19,7 @@ static void customDampingVelocityFunc(cpBody* body, cpVect gravity, cpFloat damp
 PhysicsBullet::PhysicsBullet(QAO_RuntimeRef rtRef, SynchronizedObjectRegistry& syncObjReg, SyncId syncId,
                              const VisibleState& initialState)
     : SynchronizedObject{rtRef, SPEMPE_TYPEID_SELF, *PEXEPR_ENTITIES_BELOW, "PhysicsBullet", syncObjReg, syncId}
-    , _ssch{ctx().syncBufferLength}
+    , _ssch{ccomp<spempe::NetworkingManagerInterface>().getSyncObjReg().getDefaultDelay()}
 {
     for (auto& state : _ssch) {
         state = initialState;
@@ -77,7 +77,7 @@ void PhysicsBullet::_eventUpdate() {
     else{
         _ssch.scheduleNewStates();
         _ssch.advance();
-        _ssch.advanceDownTo(std::max(1, ctx().syncBufferLength * 2));
+        _ssch.advanceDownTo(std::max(1, ccomp<spempe::NetworkingManagerInterface>().getSyncObjReg().getDefaultDelay() * 2));
     }
 }
 

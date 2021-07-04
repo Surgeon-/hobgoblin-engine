@@ -46,11 +46,11 @@ RN_DEFINE_RPC(GameStartAnnouncement, RN_ARGS()) {
 GameplayManager::GameplayManager(QAO_RuntimeRef runtimeRef)
     : NonstateObject{runtimeRef, TYPEID_SELF, *PEXEPR_GAMEPLAY_MGR, "GameplayManager"}
 {
-    ctx(MNetworking).addEventListener(this);
+    ccomp<spempe::NetworkingManagerInterface>().addEventListener(*this);
 }
 
 GameplayManager::~GameplayManager() {
-    ctx(MNetworking).removeEventListener(this);
+    ccomp<spempe::NetworkingManagerInterface>().removeEventListener(*this);
 }
 
 void GameplayManager::restartGame() {
@@ -69,7 +69,7 @@ void GameplayManager::restartGame() {
 
         // Create new players:
         if (ctx().hasNetworking()) {
-            auto& server = ctx(MNetworking).getServer();
+            auto& server = ccomp<spempe::NetworkingManagerInterface>().getServer();
 
             for (hg::PZInteger i = 0; i < server.getSize(); i += 1) {
                 const auto& clientStatus = server.getClientConnector(i).getStatus();
@@ -78,21 +78,21 @@ void GameplayManager::restartGame() {
                     PhysicsPlayer::VisibleState vs;
                     vs.playerIndex = i + 1;
                     _setPlayerPosition(vs.playerIndex, &vs.x, &vs.y);
-                    QAO_PCreate<PhysicsPlayer>(getRuntime(), ctx().getSyncObjReg(), SYNC_ID_NEW, vs);
+                    QAO_PCreate<PhysicsPlayer>(getRuntime(), ccomp<spempe::NetworkingManagerInterface>().getSyncObjReg(), SYNC_ID_NEW, vs);
                 }
             }
         }
 
-        if (ctx().getLocalPlayerIndex() == spempe::PLAYER_INDEX_LOCAL_PLAYER) {
+        if (ccomp<spempe::NetworkingManagerInterface>().getLocalPlayerIndex() == spempe::PLAYER_INDEX_LOCAL_PLAYER) {
             // TODO Temp -- give an init() method to PhysicsPlayer
             PhysicsPlayer::VisibleState vs;
             vs.playerIndex = spempe::PLAYER_INDEX_LOCAL_PLAYER;
             _setPlayerPosition(vs.playerIndex, &vs.x, &vs.y);
-            QAO_PCreate<PhysicsPlayer>(getRuntime(), ctx().getSyncObjReg(), SYNC_ID_NEW, vs);
+            QAO_PCreate<PhysicsPlayer>(getRuntime(), ccomp<spempe::NetworkingManagerInterface>().getSyncObjReg(), SYNC_ID_NEW, vs);
         }
 
         // Announce:
-        Compose_GameStartAnnouncement(ctx(MNetworking).getNode(), RN_COMPOSE_FOR_ALL);
+        Compose_GameStartAnnouncement(ccomp<spempe::NetworkingManagerInterface>().getNode(), RN_COMPOSE_FOR_ALL);
         if (!ctx().isHeadless()) {
             std::cout << "*** A new game has started. ***\n";
         }
@@ -114,7 +114,7 @@ void GameplayManager::_eventUpdate() {
             restartGame();
         }
         else {
-            Compose_RequestGameRestart(ctx(MNetworking).getNode(), RN_COMPOSE_FOR_ALL);
+            Compose_RequestGameRestart(ccomp<spempe::NetworkingManagerInterface>().getNode(), RN_COMPOSE_FOR_ALL);
         }
     }
 

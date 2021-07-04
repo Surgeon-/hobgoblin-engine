@@ -81,11 +81,11 @@ EnvironmentManager::EnvironmentManager(QAO_RuntimeRef rtRef)
     : StateObject{rtRef, TYPEID_SELF, *PEXEPR_ENVIRON_MGR, "TerrainManager"}
     , _lightingCtrl{0, 0, 32.f, hg::gr::Color{5, 5, 10}}
 {
-    ctx(MNetworking).addEventListener(this);
+    ccomp<spempe::NetworkingManagerInterface>().addEventListener(*this);
 }
 
 EnvironmentManager::~EnvironmentManager() {
-    ctx(MNetworking).removeEventListener(this);
+    ccomp<spempe::NetworkingManagerInterface>().removeEventListener(*this);
 }
 
 void EnvironmentManager::generate(hg::PZInteger width, hg::PZInteger height, float cellResolution) {
@@ -187,10 +187,10 @@ void EnvironmentManager::onNetworkingEvent(const RN_Event& ev) {
     
     ev.visit(
         [this](const RN_Event::Connected& ev) {
-            auto& node = ctx(MNetworking).getNode();
+            auto& node = ccomp<spempe::NetworkingManagerInterface>().getNode();
             auto receiverIndex = *ev.clientIndex;
 
-            if (ctx(MNetworking).getServer().getClientConnector(receiverIndex).getStatus() !=
+            if (ccomp<spempe::NetworkingManagerInterface>().getServer().getClientConnector(receiverIndex).getStatus() !=
                 RN_ConnectorStatus::Connected) {
                 // If we have both Connected and Disconnected queued up, it means this
                 // client is actually no longer connected..

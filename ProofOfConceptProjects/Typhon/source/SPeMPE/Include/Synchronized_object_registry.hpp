@@ -20,7 +20,7 @@ class SynchronizedObjectRegistry
     : public hg::util::NonCopyable
     , public hg::util::NonMoveable {
 public:
-    SynchronizedObjectRegistry(hg::RN_NodeInterface& node);
+    SynchronizedObjectRegistry(hg::RN_NodeInterface& node, hg::PZInteger defaultDelay);
 
     void setNode(hg::RN_NodeInterface& node);
 
@@ -37,6 +37,11 @@ public:
     void syncStateUpdates();
     void syncCompleteState(hg::PZInteger clientIndex);
 
+    hg::PZInteger getDefaultDelay() const;
+
+    //! 
+    void setDefaultDelay(hg::PZInteger aNewDefaultDelaySteps);
+
 private:
     std::unordered_map<SyncId, SynchronizedObject*> _mappings;
     std::unordered_set<const SynchronizedObject*> _newlyCreatedObjects;
@@ -45,6 +50,7 @@ private:
     std::vector<hg::PZInteger> _recepientVec;
     SyncId _syncIdCounter = 2;
     hg::RN_NodeInterface* _node;
+    hg::PZInteger _defaultDelay;
 };
 
 } // namespace spempe
