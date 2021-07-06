@@ -119,7 +119,7 @@ void MainMenu::_eventUpdate() {
     else if (mode == SOLO) {
         ctx().setToMode(GameContext::Mode::Solo);
         ctx().getComponent<spempe::WindowManagerInterface>().setToNormalMode(
-            spempe::WindowManagerInterface::WindowConfig(sf::VideoMode::getDesktopMode(), "Typhon", sf::Style::Default),
+            spempe::WindowManagerInterface::WindowConfig(sf::VideoMode::getDesktopMode(), "Typhon", sf::Style::Fullscreen),
             spempe::WindowManagerInterface::MainRenderTextureConfig({sf::VideoMode::getDesktopMode().width,
                                                                      sf::VideoMode::getDesktopMode().height}),
             spempe::WindowManagerInterface::TimingConfig(60, false, true, true)

@@ -22,7 +22,7 @@ using MWindow     = spe::WindowManagerInterface;
 #define PRIORITY_PLAYERAVATAR  5
 #define PRIORITY_WINDOWMGR     0
 
-#define STATE_BUFFERING_LENGTH 0
+#define STATE_BUFFERING_LENGTH 3
 
 ///////////////////////////////////////////////////////////////////////////
 // PLAYER CONTROLS                                                       //
@@ -226,6 +226,10 @@ void GameplayManager::_eventUpdate() {
         Compose_PushPlayerControls(ccomp<MNetworking>().getClient(),
                                    RN_COMPOSE_FOR_ALL, controls);
     }
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)) {
+        ctx().stop();
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -239,6 +243,12 @@ void GameplayManager::_eventUpdate() {
 enum class GameMode {
     Server, Client
 };
+
+bool MyRetransmitPredicate(hg::PZInteger aCyclesSinceLastTransmit,
+                           std::chrono::microseconds aTimeSinceLastSend,
+                           std::chrono::microseconds aCurrentLatency) {
+    return 1;
+}
 
 std::unique_ptr<spe::GameContext> MakeGameContext(GameMode aGameMode,
                                                   std::uint16_t aLocalPort,
@@ -261,14 +271,15 @@ std::unique_ptr<spe::GameContext> MakeGameContext(GameMode aGameMode,
         winMgr->setToNormalMode(
             spe::WindowManagerInterface::WindowConfig{
                 sf::VideoMode{WINDOW_WIDTH, WINDOW_WIDTH},
-                "SPeMPE Minimal Multiplayer"
+                "SPeMPE Minimal Multiplayer",
+                sf::Style::Fullscreen
             },
             spe::WindowManagerInterface::MainRenderTextureConfig{{WINDOW_HEIGHT, WINDOW_HEIGHT}},
             spe::WindowManagerInterface::TimingConfig{
                 FRAMERATE,
-                false,                                          /* Framerate limiter */
-                (aGameMode == GameMode::Server) ? false : true, /* V-Sync */
-                (aGameMode == GameMode::Server) ? true : false  /* Previce timing*/
+                static_cast<bool>((aGameMode == GameMode::Server) ? 0 : 0), /* Framerate limiter */
+                static_cast<bool>((aGameMode == GameMode::Server) ? 0 : 1), /* V-Sync */
+                static_cast<bool>((aGameMode == GameMode::Server) ? 1 : 0)  /* Previce timing */
             }
         );
     }
@@ -283,6 +294,7 @@ std::unique_ptr<spe::GameContext> MakeGameContext(GameMode aGameMode,
         netMgr->setToMode(spe::NetworkingManagerOne::Mode::Server);
         auto& server = netMgr->getServer();
         server.setTimeoutLimit(std::chrono::seconds{5});
+        server.setRetransmitPredicate(&MyRetransmitPredicate);
         server.start(aLocalPort);
         // TODO playerCount unused!
 
@@ -292,6 +304,7 @@ std::unique_ptr<spe::GameContext> MakeGameContext(GameMode aGameMode,
         netMgr->setToMode(spe::NetworkingManagerOne::Mode::Client);
         auto& client = netMgr->getClient();
         client.setTimeoutLimit(std::chrono::seconds{5});
+        client.setRetransmitPredicate(&MyRetransmitPredicate);
         client.connect(aLocalPort, aRemoteIp, aRemotePort);
 
         std::printf("Client started on port %d (connecting to %s:%d)\n",

@@ -87,3 +87,12 @@ target_link_libraries("minimal-multiplayer"
 PUBLIC
   "${OVERLAY_NAME}"
 )
+
+add_executable("Temp"
+  "Examples/Temp.cpp"
+)
+
+target_link_libraries("Temp"
+PUBLIC
+  "CONAN_PKG::sfml"
+)
