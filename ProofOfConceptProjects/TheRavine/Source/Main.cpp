@@ -81,7 +81,15 @@ public:
             const float x = (block.y + block.x) * 16.f;
             const float y = (block.y - block.x) *  8.f - block.z * 16.f;
 
+            if (block.y == 1.f) continue;
+
             g_BlockSprite.setPosition(x, y + 80.f);
+            if (block.z == 0) {
+                g_BlockSprite.setColor(sf::Color::Blue);
+            }
+            else {
+                g_BlockSprite.setColor(sf::Color::White);
+            }
 
             aRenderTarget.draw(g_BlockSprite);
         }
@@ -95,18 +103,37 @@ private:
     void _sortToDrawOrder(std::vector<Block>& aBlocks) const {
         std::sort(aBlocks.begin(), aBlocks.end(),
                   [](const Block& block1, const Block& block2) {
+#if 0
                       const bool _1_in_front_of_2 =
                           (+block1.x + block1.xSize <= block2.x) ||
-                          (-block1.y + block1.ySize <= -block2.y) /* ||
-                          (-block1.z - block1.zSize <= -block2.z)*/;
+                          (-block1.y + block1.ySize <= -block2.y) /*||
+                          (-block1.z + block1.zSize <= -block2.z)*/;
 
                       const bool _2_in_front_of_1 =
                           (+block2.x + block2.xSize <= block1.x) ||
-                          (-block2.y + block2.ySize <= -block1.y) /* ||
-                          (-block2.z - block2.zSize <= -block1.z)*/;
+                          (-block2.y + block2.ySize <= -block1.y) /*||
+                          (-block2.z + block2.zSize <= -block1.z)*/;
 
                       if (_1_in_front_of_2 == _2_in_front_of_1) {
                           return std::addressof(block1) >= std::addressof(block2);
+                      }
+
+                      return !_1_in_front_of_2;
+#endif
+                      bool _1_in_front_of_2;
+                      bool _2_in_front_of_1;
+
+                      if (block1.x != block2.x || block1.y != block2.y) {
+                          _1_in_front_of_2 = block1.x - block1.y < block2.x - block2.y;
+                          _2_in_front_of_1 = block2.x - block2.y < block1.x - block1.y;
+                      }
+                      else {
+                          _1_in_front_of_2 = block1.z > block2.z;
+                          _2_in_front_of_1 = block2.z > block1.z;
+                      }
+
+                      if (_1_in_front_of_2 == _2_in_front_of_1) {
+                          return std::addressof(block1) > std::addressof(block2);
                       }
 
                       return !_1_in_front_of_2;
@@ -118,7 +145,7 @@ private:
 
 #define WORLD_XSIZE  3
 #define WORLD_YSIZE  3
-#define WORLD_HEIGHT 2
+#define WORLD_HEIGHT 3
 
 int main(int argc, char* argv[]) {
     sf::Texture tex;
