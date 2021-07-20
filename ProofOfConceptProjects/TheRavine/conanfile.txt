@@ -1,0 +1,16 @@
+[requires]
+sfml/2.5.1@jbatnozic/stable
+
+[options]
+sfml:shared=False
+sfml:audio=True
+sfml:graphics=True
+sfml:network=True
+sfml:window=True
+
+[generators]
+cmake
+
+[imports]
+bin, *.dll -> ./bin
+lib, *.dylib* -> ./bin
